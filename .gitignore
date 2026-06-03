@@ -232,6 +232,10 @@ tests/data/
 *.czi
 *.nd2
 
+# Landing page assets must be tracked even though *.png is ignored above
+!docs/*.png
+!docs/*.jpg
+
 # IDE
 .idea/
 .vscode/
