@@ -216,3 +216,22 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# Petrilya: large binary assets
+models/*.onnx
+models/*.pt
+models/*.pth
+
+# Test images (download separately, third-party licenses)
+tests/data/
+*.jpg
+*.jpeg
+*.png
+*.tif
+*.tiff
+*.czi
+*.nd2
+
+# IDE
+.idea/
+.vscode/
