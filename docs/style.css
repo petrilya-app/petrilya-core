@@ -82,8 +82,12 @@ a:hover { text-decoration: underline; }
 }
 .lang-dropdown[open] .lang-caret { transform: rotate(180deg); }
 
+/* hide native disclosure marker in every browser flavor */
+.lang-dropdown > summary { list-style: none; }
+.lang-dropdown > summary::-webkit-details-marker { display: none; }
+.lang-dropdown > summary::marker { content: ""; display: none; }
+
 .lang-current {
-  list-style: none;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
@@ -99,20 +103,26 @@ a:hover { text-decoration: underline; }
   user-select: none;
   transition: border-color 0.15s ease, background 0.15s ease;
 }
-.lang-current::-webkit-details-marker { display: none; }
-.lang-current::marker { content: ""; }
 .lang-current:hover { border-color: var(--accent); background: rgba(91, 142, 217, 0.08); }
+.lang-dropdown[open] .lang-current { border-color: var(--accent); }
 
+/* SVG flag — always rendered identically across OSes */
 .lang-flag {
-  font-size: 14px;
-  line-height: 1;
+  width: 20px;
+  height: 14px;
+  border-radius: 2px;
+  flex-shrink: 0;
+  display: inline-block;
+  overflow: hidden;
+  box-shadow: 0 0 0 1px rgba(255,255,255,0.08);
 }
 
 .lang-caret {
   width: 10px;
-  height: 7px;
+  height: 6px;
   color: var(--text-dim);
   transition: transform 0.18s ease;
+  flex-shrink: 0;
 }
 
 .lang-menu {
@@ -157,13 +167,11 @@ a:hover { text-decoration: underline; }
   width: 14px;
   height: 14px;
   color: var(--accent-2);
+  flex-shrink: 0;
 }
-.lang-active {
-  background: rgba(111, 191, 161, 0.08);
-}
+.lang-active { background: rgba(111, 191, 161, 0.08); }
 .lang-active .lang-label { color: var(--accent-2); }
 
-/* Close menu when clicking outside (browser handles natively via summary) */
 @media (max-width: 760px) {
   .lang-menu { right: 0; left: auto; }
 }
