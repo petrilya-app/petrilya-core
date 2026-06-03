@@ -74,16 +74,99 @@ a:hover { text-decoration: underline; }
 }
 .nav-links a:hover { color: var(--text); text-decoration: none; }
 
-.lang-switch {
-  margin-left: 18px !important;
-  padding: 4px 10px;
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  font-size: 12px !important;
-  letter-spacing: 0.5px;
+/* ---------- Language dropdown ---------- */
+.lang-dropdown {
+  position: relative;
+  margin-left: 18px;
+  display: inline-block;
 }
-.lang-switch strong { color: var(--text); }
-.lang-switch:hover { border-color: var(--accent); }
+.lang-dropdown[open] .lang-caret { transform: rotate(180deg); }
+
+.lang-current {
+  list-style: none;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  color: var(--text);
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.3px;
+  user-select: none;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+.lang-current::-webkit-details-marker { display: none; }
+.lang-current::marker { content: ""; }
+.lang-current:hover { border-color: var(--accent); background: rgba(91, 142, 217, 0.08); }
+
+.lang-flag {
+  font-size: 14px;
+  line-height: 1;
+}
+
+.lang-caret {
+  width: 10px;
+  height: 7px;
+  color: var(--text-dim);
+  transition: transform 0.18s ease;
+}
+
+.lang-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 180px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 6px;
+  box-shadow:
+    0 12px 30px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(91, 142, 217, 0.08);
+  z-index: 100;
+  animation: lang-menu-in 0.16s ease-out;
+}
+
+@keyframes lang-menu-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 6px;
+  color: var(--text) !important;
+  font-size: 14px !important;
+  margin: 0 !important;
+  text-decoration: none !important;
+  transition: background 0.12s ease;
+}
+.lang-option:hover {
+  background: rgba(91, 142, 217, 0.12);
+  text-decoration: none;
+}
+.lang-label { flex: 1; }
+.lang-check {
+  width: 14px;
+  height: 14px;
+  color: var(--accent-2);
+}
+.lang-active {
+  background: rgba(111, 191, 161, 0.08);
+}
+.lang-active .lang-label { color: var(--accent-2); }
+
+/* Close menu when clicking outside (browser handles natively via summary) */
+@media (max-width: 760px) {
+  .lang-menu { right: 0; left: auto; }
+}
 
 .hero-grid {
   max-width: var(--maxw);
