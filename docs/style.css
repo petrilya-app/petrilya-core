@@ -74,6 +74,17 @@ a:hover { text-decoration: underline; }
 }
 .nav-links a:hover { color: var(--text); text-decoration: none; }
 
+.lang-switch {
+  margin-left: 18px !important;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  font-size: 12px !important;
+  letter-spacing: 0.5px;
+}
+.lang-switch strong { color: var(--text); }
+.lang-switch:hover { border-color: var(--accent); }
+
 .hero-grid {
   max-width: var(--maxw);
   margin: 50px auto 0;

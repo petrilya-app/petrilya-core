@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Petrilya — ИИ-счётчик колоний для биолабораторий</title>
+  <meta name="description" content="Petrilya — десктопное приложение с открытым исходным кодом, которое превращает фото чашки Петри со смартфона в готовый отчёт о колониях за секунды. Без кода, без облака, без видеокарты." />
+  <meta property="og:title" content="Petrilya — ИИ-счётчик колоний" />
+  <meta property="og:description" content="Перетащил, посчитал, выгрузил отчёт. Десктоп-приложение для микробиологии с открытым кодом." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://petrilya.com/ru/" />
+  <meta property="og:image" content="https://petrilya.com/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <link rel="alternate" hreflang="en" href="https://petrilya.com/" />
+  <link rel="alternate" hreflang="ru" href="https://petrilya.com/ru/" />
+  <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+  <link rel="stylesheet" href="../style.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav">
+      <div class="brand">
+        <a href="../" style="display:flex;align-items:center;gap:10px;color:inherit;text-decoration:none;">
+          <span class="logo-dot"></span>
+          <span class="brand-name">Petrilya</span>
+        </a>
+      </div>
+      <div class="nav-links">
+        <a href="#how">Как это работает</a>
+        <a href="#features">Возможности</a>
+        <a href="#download">Скачать</a>
+        <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener">GitHub</a>
+        <a href="../" class="lang-switch" aria-label="English">EN&nbsp;/&nbsp;<strong>RU</strong></a>
+      </div>
+    </nav>
+
+    <div class="hero-grid">
+      <div class="hero-text">
+        <h1>Считайте колонии<br>на чашке Петри<br><span class="accent">за секунды, а не часы.</span></h1>
+        <p class="lead">
+          Перетащите фото со смартфона. Petrilya найдёт каждую колонию, посчитает их и выгрузит готовый отчёт. Десктопное приложение с открытым кодом. Без программирования, без облака, без видеокарты.
+        </p>
+        <div class="cta-row">
+          <a href="#download" class="btn btn-primary">Скачать для Windows</a>
+          <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener" class="btn btn-ghost">Исходный код на GitHub</a>
+        </div>
+        <p class="hero-meta">
+          <span class="badge">Открытый код</span>
+          <span class="badge">Без облака</span>
+          <span class="badge">Без GPU</span>
+          <span class="badge">AGPL-3.0</span>
+        </p>
+      </div>
+      <div class="hero-art">
+        <img src="../hero-dish.png" alt="Чашка Петри с распознанными цветными колониями" />
+        <div class="hero-art-caption">
+          <span class="count">200</span>
+          <span class="count-label">колоний за&nbsp;1,18&thinsp;с</span>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section id="how" class="how">
+    <div class="container">
+      <h2>Как это работает</h2>
+      <p class="section-lead">Три клика от фото в телефоне до отчёта на столе у руководителя.</p>
+
+      <ol class="steps">
+        <li class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Перетащите изображение</h3>
+            <p>JPG, PNG или TIFF — с микроскопа, телефона или сканера. Обработайте сразу целую папку в пакетном режиме.</p>
+          </div>
+          <svg class="step-art" viewBox="0 0 220 140" aria-hidden="true">
+            <rect x="6" y="6" width="208" height="128" rx="10" fill="none" stroke="#3a4358" stroke-width="2" stroke-dasharray="6 5"/>
+            <g transform="translate(110 70)">
+              <rect x="-30" y="-22" width="60" height="44" rx="6" fill="#1c2230" stroke="#5b8ed9" stroke-width="1.5"/>
+              <path d="M-12 6 L0 -8 L12 6 M0 -8 L0 14" stroke="#5b8ed9" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </li>
+        <li class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Нажмите «Анализ»</h3>
+            <p>Под капотом — Cellpose. Готовые модели находят все колонии без настройки параметров. Каждой присваивается ID, площадь, диаметр, эксцентриситет.</p>
+          </div>
+          <svg class="step-art" viewBox="0 0 220 140" aria-hidden="true">
+            <circle cx="110" cy="70" r="56" fill="#1c2230" stroke="#3a4358" stroke-width="1.5"/>
+            <circle cx="92" cy="58" r="7" fill="#5b8ed9" opacity="0.85"/>
+            <circle cx="124" cy="56" r="5" fill="#6fbfa1" opacity="0.85"/>
+            <circle cx="116" cy="82" r="8" fill="#da9158" opacity="0.85"/>
+            <circle cx="88" cy="88" r="6" fill="#c86482" opacity="0.85"/>
+            <circle cx="134" cy="92" r="5" fill="#aa82dc" opacity="0.85"/>
+            <circle cx="104" cy="70" r="4" fill="#6eb4dc" opacity="0.85"/>
+          </svg>
+        </li>
+        <li class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Выгрузите отчёт</h3>
+            <p>PDF на одну страницу: превью, гистограмма, таблица. CSV для Excel. JSON-манифест с SHA-256 и параметрами запуска — для воспроизводимости в публикациях.</p>
+          </div>
+          <svg class="step-art" viewBox="0 0 220 140" aria-hidden="true">
+            <rect x="56" y="20" width="80" height="100" rx="6" fill="#1c2230" stroke="#3a4358"/>
+            <rect x="64" y="32" width="50" height="6" rx="2" fill="#5b8ed9"/>
+            <rect x="64" y="46" width="64" height="3" rx="1.5" fill="#3a4358"/>
+            <rect x="64" y="54" width="50" height="3" rx="1.5" fill="#3a4358"/>
+            <rect x="64" y="62" width="60" height="3" rx="1.5" fill="#3a4358"/>
+            <rect x="64" y="78" width="64" height="22" rx="3" fill="#0f1115" stroke="#3a4358"/>
+            <path d="M68 96 L80 86 L88 92 L100 78 L116 82 L124 90" stroke="#6fbfa1" fill="none" stroke-width="1.5"/>
+            <rect x="64" y="106" width="64" height="3" rx="1.5" fill="#3a4358"/>
+            <g transform="translate(140 90)">
+              <circle r="22" fill="#6fbfa1" opacity="0.18"/>
+              <path d="M-8 0 L-2 6 L9 -6" stroke="#6fbfa1" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <section id="features" class="features">
+    <div class="container">
+      <h2>Возможности</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-icon">📥</div>
+          <h3>Перетаскивание файлов</h3>
+          <p>Сбросьте JPG, PNG или TIFF прямо из проводника. В пакетном режиме обрабатывает сразу всю папку с десятками чашек.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔬</div>
+          <h3>ИИ-сегментация</h3>
+          <p>На базе библиотеки Cellpose. Предобученные модели находят колонии разной формы и размера без ручной настройки.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">✏️</div>
+          <h3>Ручная коррекция</h3>
+          <p>Один клик удаляет ошибочно найденную колонию. Кисть добавляет пропущенную. Метрики пересчитываются мгновенно.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔍</div>
+          <h3>Зум и панорама</h3>
+          <p>Колесо мыши — приближение в любую точку, Space + перетаскивание — сдвиг. F — вписать в окно. Удобно для деталей.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📏</div>
+          <h3>Реальные единицы</h3>
+          <p>Укажите микрометры на пиксель — и площади выводятся в мкм², диаметры в мкм. Готово для раздела «Методы» в статье.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📄</div>
+          <h3>Отчёты для публикаций</h3>
+          <p>PDF-отчёт с превью, гистограммой и таблицей. CSV для электронных таблиц. JSON-манифест с SHA-256 для воспроизводимости.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">💻</div>
+          <h3>Работает на ноутбуке</h3>
+          <p>Windows, macOS, Linux. CUDA — если есть, обычный CPU — если нет. Данные не покидают рабочую станцию.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔁</div>
+          <h3>Пакетная обработка</h3>
+          <p>Указали папку — получили CSV, PDF и JSON для каждого изображения плюс сводный summary.csv. Можно идти пить чай.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <h3>Конфиденциально</h3>
+          <p>Нет аналитики, нет аккаунтов, нет загрузки в облако. Чувствительные данные пациентов и фармы остаются у вас локально.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download" class="download">
+    <div class="container">
+      <h2>Скачать</h2>
+      <p class="lead">
+        Petrilya сейчас в стадии <strong>pre-alpha</strong>. Установщика пока нет — проект разрабатывается в открытую. Чтобы попробовать текущую сборку, склонируйте репозиторий.
+      </p>
+      <pre class="code"><code>git clone https://github.com/petrilya-app/petrilya-core.git
+cd petrilya-core
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .
+petrilya-ui</code></pre>
+      <p>
+        <a href="https://github.com/petrilya-app/petrilya-core/releases" class="btn btn-primary" target="_blank" rel="noopener">Релизы на GitHub</a>
+        <a href="https://github.com/petrilya-app/petrilya-core/issues" class="btn btn-ghost" target="_blank" rel="noopener">Сообщить об ошибке</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="for-labs">
+    <div class="container">
+      <h2>Для лабораторий и фармы</h2>
+      <p>
+        Petrilya распространяется по двойной лицензии: <strong>AGPL-3.0</strong> для открытой сборки и коммерческая лицензия — для организаций, которым нужна локальная установка без обязательств copyleft. Это в том числе изолированные лабораторные сети и процессы под GMP.
+      </p>
+      <p>
+        Хотите пилот, интеграцию с вашей LIMS или собственные обучающие данные? Напишите: <a href="mailto:iliarogogvykh@gmail.com">iliarogogvykh@gmail.com</a>
+      </p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-row">
+        <div>
+          <strong>Petrilya</strong>
+          <p class="muted">Открытый счётчик колоний для биолабораторий.</p>
+        </div>
+        <div>
+          <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/petrilya-app/petrilya-core/blob/main/LICENSE" target="_blank" rel="noopener">Лицензия</a>
+          <a href="mailto:iliarogogvykh@gmail.com">Контакты</a>
+          <a href="../">English</a>
+        </div>
+      </div>
+      <p class="muted small">© 2026 Petrilya. Создано на основе Cellpose, PySide6, ONNX Runtime.</p>
+    </div>
+  </footer>
+</body>
+</html>
