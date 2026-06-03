@@ -1,12 +1,38 @@
 [project]
 name = "petrilya"
 version = "0.0.1"
-description = "AI colony counter for biology labs"
+description = "AI colony counter for biology labs — drag, count, export."
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 license = { file = "LICENSE" }
-authors = [{ name = "Ilya", email = "you@petrilya.com" }]
-
+authors = [{ name = "Ilya Rogozhin", email = "iliarogogvykh@gmail.com" }]
+keywords = [
+    "microbiology",
+    "colony-counter",
+    "petri-dish",
+    "cellpose",
+    "bioimage-analysis",
+    "image-segmentation",
+    "microscopy",
+]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Environment :: X11 Applications :: Qt",
+    "Environment :: Win32 (MS Windows)",
+    "Environment :: MacOS X",
+    "Intended Audience :: Science/Research",
+    "Intended Audience :: Healthcare Industry",
+    "License :: OSI Approved :: GNU Affero General Public License v3",
+    "Operating System :: Microsoft :: Windows",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Bio-Informatics",
+    "Topic :: Scientific/Engineering :: Image Processing",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
 dependencies = [
     "numpy>=1.26,<2.0",
     "Pillow>=10.0",
@@ -24,7 +50,13 @@ dependencies = [
 
 [project.optional-dependencies]
 gpu = ["onnxruntime-gpu>=1.17"]
-dev = ["pytest>=7.4", "black>=24.1", "ruff>=0.2"]
+dev = ["pytest>=7.4", "black>=24.1", "ruff>=0.2", "build>=1.0", "twine>=5.0"]
+
+[project.urls]
+Homepage = "https://petrilya.com"
+Source = "https://github.com/petrilya-app/petrilya-core"
+Issues = "https://github.com/petrilya-app/petrilya-core/issues"
+"Release notes" = "https://github.com/petrilya-app/petrilya-core/releases"
 
 [project.scripts]
 petrilya = "petrilya.cli:main"

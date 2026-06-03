@@ -236,6 +236,11 @@ tests/data/
 !docs/*.png
 !docs/*.jpg
 
+# Local PyPI build artifacts
+dist/
+build/
+*.egg-info/
+
 # IDE
 .idea/
 .vscode/
