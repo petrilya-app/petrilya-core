@@ -9,6 +9,8 @@
   <meta property="og:description" content="Drag, count, export. Open-source desktop app for microbiology." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://petrilya.com" />
+  <meta property="og:image" content="https://petrilya.com/og-image.png" />
+  <meta name="twitter:card" content="summary_large_image" />
   <link rel="icon" type="image/svg+xml" href="favicon.svg" />
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -20,29 +22,100 @@
         <span class="brand-name">Petrilya</span>
       </div>
       <div class="nav-links">
+        <a href="#how">How it works</a>
         <a href="#features">Features</a>
         <a href="#download">Download</a>
         <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener">GitHub</a>
       </div>
     </nav>
 
-    <div class="hero-content">
-      <h1>Count colonies on a Petri dish<br><span class="accent">in seconds, not hours.</span></h1>
-      <p class="lead">
-        Petrilya is an open-source desktop application that turns a phone photo of a Petri dish into a structured colony report. Drag the image in, click <em>Analyze</em>, export to CSV or PDF.
-      </p>
-      <div class="cta-row">
-        <a href="#download" class="btn btn-primary">Download for Windows</a>
-        <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener" class="btn btn-ghost">View source on GitHub</a>
+    <div class="hero-grid">
+      <div class="hero-text">
+        <h1>Count colonies on a Petri dish<br><span class="accent">in seconds, not hours.</span></h1>
+        <p class="lead">
+          Drop in a phone photo. Petrilya finds every colony, gives you the count, and exports a clean report. Open-source desktop app. No code, no cloud, no GPU required.
+        </p>
+        <div class="cta-row">
+          <a href="#download" class="btn btn-primary">Download for Windows</a>
+          <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener" class="btn btn-ghost">View source on GitHub</a>
+        </div>
+        <p class="hero-meta">
+          <span class="badge">Open-source</span>
+          <span class="badge">No cloud</span>
+          <span class="badge">No GPU required</span>
+          <span class="badge">AGPL-3.0</span>
+        </p>
       </div>
-      <p class="hero-meta">
-        <span class="badge">Open-source</span>
-        <span class="badge">No cloud</span>
-        <span class="badge">No GPU required</span>
-        <span class="badge">AGPL-3.0</span>
-      </p>
+      <div class="hero-art">
+        <img src="hero-dish.png" alt="Petri dish with colored colony detections" />
+        <div class="hero-art-caption">
+          <span class="count">200</span>
+          <span class="count-label">colonies in&nbsp;1.18&thinsp;s</span>
+        </div>
+      </div>
     </div>
   </header>
+
+  <section id="how" class="how">
+    <div class="container">
+      <h2>How it works</h2>
+      <p class="section-lead">Three clicks from a photo on your phone to a report on your director's desk.</p>
+
+      <ol class="steps">
+        <li class="step">
+          <div class="step-num">1</div>
+          <div class="step-body">
+            <h3>Drop the image in</h3>
+            <p>Drag a JPG/PNG/TIFF from your microscope, phone, or scanner into the window. Or process a whole folder at once with batch mode.</p>
+          </div>
+          <svg class="step-art" viewBox="0 0 220 140" aria-hidden="true">
+            <rect x="6" y="6" width="208" height="128" rx="10" fill="none" stroke="#3a4358" stroke-width="2" stroke-dasharray="6 5"/>
+            <g transform="translate(110 70)">
+              <rect x="-30" y="-22" width="60" height="44" rx="6" fill="#1c2230" stroke="#5b8ed9" stroke-width="1.5"/>
+              <path d="M-12 6 L0 -8 L12 6 M0 -8 L0 14" stroke="#5b8ed9" stroke-width="2" fill="none" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </li>
+        <li class="step">
+          <div class="step-num">2</div>
+          <div class="step-body">
+            <h3>Click Analyze</h3>
+            <p>Cellpose under the hood. Pretrained models segment every colony, no settings to tweak. Each one gets an ID, area, diameter, eccentricity.</p>
+          </div>
+          <svg class="step-art" viewBox="0 0 220 140" aria-hidden="true">
+            <circle cx="110" cy="70" r="56" fill="#1c2230" stroke="#3a4358" stroke-width="1.5"/>
+            <circle cx="92" cy="58" r="7" fill="#5b8ed9" opacity="0.85"/>
+            <circle cx="124" cy="56" r="5" fill="#6fbfa1" opacity="0.85"/>
+            <circle cx="116" cy="82" r="8" fill="#da9158" opacity="0.85"/>
+            <circle cx="88" cy="88" r="6" fill="#c86482" opacity="0.85"/>
+            <circle cx="134" cy="92" r="5" fill="#aa82dc" opacity="0.85"/>
+            <circle cx="104" cy="70" r="4" fill="#6eb4dc" opacity="0.85"/>
+          </svg>
+        </li>
+        <li class="step">
+          <div class="step-num">3</div>
+          <div class="step-body">
+            <h3>Export the report</h3>
+            <p>One-page PDF with preview, histogram, and table. CSV for spreadsheets. JSON manifest with SHA-256 and parameters for reproducibility.</p>
+          </div>
+          <svg class="step-art" viewBox="0 0 220 140" aria-hidden="true">
+            <rect x="56" y="20" width="80" height="100" rx="6" fill="#1c2230" stroke="#3a4358"/>
+            <rect x="64" y="32" width="50" height="6" rx="2" fill="#5b8ed9"/>
+            <rect x="64" y="46" width="64" height="3" rx="1.5" fill="#3a4358"/>
+            <rect x="64" y="54" width="50" height="3" rx="1.5" fill="#3a4358"/>
+            <rect x="64" y="62" width="60" height="3" rx="1.5" fill="#3a4358"/>
+            <rect x="64" y="78" width="64" height="22" rx="3" fill="#0f1115" stroke="#3a4358"/>
+            <path d="M68 96 L80 86 L88 92 L100 78 L116 82 L124 90" stroke="#6fbfa1" fill="none" stroke-width="1.5"/>
+            <rect x="64" y="106" width="64" height="3" rx="1.5" fill="#3a4358"/>
+            <g transform="translate(140 90)">
+              <circle r="22" fill="#6fbfa1" opacity="0.18"/>
+              <path d="M-8 0 L-2 6 L9 -6" stroke="#6fbfa1" stroke-width="2.5" fill="none" stroke-linecap="round"/>
+            </g>
+          </svg>
+        </li>
+      </ol>
+    </div>
+  </section>
 
   <section id="features" class="features">
     <div class="container">
@@ -50,7 +123,7 @@
       <div class="grid">
         <div class="card">
           <div class="card-icon">📥</div>
-          <h3>Drag & drop</h3>
+          <h3>Drag &amp; drop</h3>
           <p>Drop a JPG, PNG, or TIFF straight from your phone or microscope. Batch a whole folder when you have a hundred dishes.</p>
         </div>
         <div class="card">
@@ -64,9 +137,14 @@
           <p>Erase a misdetected colony with a click. Paint in one the model missed with the brush tool. Metrics recalculate instantly.</p>
         </div>
         <div class="card">
+          <div class="card-icon">🔍</div>
+          <h3>Zoom &amp; pan</h3>
+          <p>Wheel-zoom into any part of the dish, Space-drag to pan. Inspect small details, then fit-to-window with F.</p>
+        </div>
+        <div class="card">
           <div class="card-icon">📏</div>
           <h3>Real units</h3>
-          <p>Set micrometers-per-pixel and your areas come out in μm² and diameters in μm — ready for the methods section.</p>
+          <p>Set micrometers-per-pixel and your areas come out in &micro;m&sup2; and diameters in &micro;m — ready for the methods section.</p>
         </div>
         <div class="card">
           <div class="card-icon">📄</div>
@@ -77,6 +155,16 @@
           <div class="card-icon">💻</div>
           <h3>Works on your laptop</h3>
           <p>Windows, macOS, Linux. CUDA when you have it, plain CPU when you don't. Your data never leaves the machine.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔁</div>
+          <h3>Batch mode</h3>
+          <p>Point at a folder, get a CSV, PDF and JSON per image plus a summary.csv aggregating the run. Walk away while it works.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔒</div>
+          <h3>Yours, locally</h3>
+          <p>No telemetry, no accounts, no upload. Sensitive patient samples and pharma data stay on the workstation.</p>
         </div>
       </div>
     </div>
@@ -108,7 +196,7 @@ petrilya-ui</code></pre>
         Petrilya is dual-licensed: <strong>AGPL-3.0</strong> for the open-source build, and a commercial license for organisations that need on-premise deployment without copyleft obligations — including air-gapped lab networks and GMP-relevant workflows.
       </p>
       <p>
-        Interested in a pilot, custom integration with your LIMS, or training data? <a href="mailto:hello@petrilya.com">hello@petrilya.com</a>
+        Interested in a pilot, custom integration with your LIMS, or training data? <a href="mailto:iliarogogvykh@gmail.com">iliarogogvykh@gmail.com</a>
       </p>
     </div>
   </section>
@@ -123,7 +211,7 @@ petrilya-ui</code></pre>
         <div>
           <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener">GitHub</a>
           <a href="https://github.com/petrilya-app/petrilya-core/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
-          <a href="mailto:hello@petrilya.com">Contact</a>
+          <a href="mailto:iliarogogvykh@gmail.com">Contact</a>
         </div>
       </div>
       <p class="muted small">© 2026 Petrilya. Built with Cellpose, PySide6, ONNX Runtime.</p>
