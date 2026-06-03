@@ -1,8 +1,9 @@
 """Generate hero images for the landing page.
 
-Produces:
-  docs/hero-dish.png    a photoreal petri dish with AI detection overlay
-  docs/og-image.png     a 1200x630 social-share card
+Photorealistic Petri dish: translucent agar over a subtly blurred lab
+background bleed, varied colony morphology and color (yellow / amber /
+cream / white / red), AI detection overlay, ID labels. Cropped to a
+circle with transparency outside.
 """
 
 from __future__ import annotations
@@ -14,134 +15,209 @@ from PIL import Image, ImageDraw, ImageFilter, ImageFont
 
 
 # ----------------------------------------------------------------------
-# Photoreal Petri dish
+# Palettes
 # ----------------------------------------------------------------------
 
+# Realistic colony colors weighted by frequency in nature.
+# (mean_rgb, variance, weight)
+COLONY_PALETTES = [
+    ((232, 205, 100), 22, 3.0),  # vibrant yellow
+    ((245, 230, 198), 14, 2.5),  # cream / pale
+    ((222, 158, 78),  20, 1.5),  # amber/orange
+    ((250, 246, 235),  8, 1.2),  # off-white
+    ((198, 142, 70),  16, 0.9),  # dark amber
+    ((212, 105, 92),  20, 0.5),  # red-orange
+    ((164, 122, 84),  14, 0.4),  # brown
+]
+_COLONY_WEIGHTS = np.array([p[2] for p in COLONY_PALETTES])
+_COLONY_WEIGHTS = _COLONY_WEIGHTS / _COLONY_WEIGHTS.sum()
+
+# Subtle AI overlay rings — kept mostly cool to contrast warm colonies.
 PALETTE_DETECT = [
-    (91, 142, 217),   # accent blue
-    (111, 191, 161),  # accent green
-    (218, 145, 88),   # warm orange
-    (200, 100, 130),  # muted pink
-    (170, 130, 220),  # soft purple
-    (110, 180, 220),  # teal
+    (91, 142, 217),    # accent blue
+    (111, 191, 161),   # accent green
+    (170, 130, 220),   # soft purple
+    (110, 180, 220),   # teal
 ]
 
 
-def _agar_background(size: int, cx: int, cy: int, dish_r: int, inner_r: int, rng) -> Image.Image:
-    """Render the agar interior with a soft radial gradient + film grain."""
-    yy, xx = np.ogrid[:size, :size]
+# ----------------------------------------------------------------------
+# Helpers
+# ----------------------------------------------------------------------
+
+def _lab_background(size: int, rng) -> Image.Image:
+    """Soft, blurred out-of-focus lab scene that shows through the agar."""
+    yy, xx = np.indices((size, size), dtype=np.float32)
+    arr = np.zeros((size, size, 3), dtype=np.float32)
+    # vertical gradient: lighter near top
+    arr[..., 0] = 18 + (yy / size) * 9
+    arr[..., 1] = 24 + (yy / size) * 11
+    arr[..., 2] = 32 + (yy / size) * 14
+
+    # Diffuse highlights to suggest equipment / light
+    glow = np.zeros((size, size), dtype=np.float32)
+    for _ in range(14):
+        nx = rng.uniform(0, size)
+        ny = rng.uniform(0, size)
+        nr = rng.uniform(90, 200)
+        ni = rng.uniform(10, 26)
+        glow += ni * np.exp(-((xx - nx) ** 2 + (yy - ny) ** 2) / (2 * nr ** 2))
+    arr[..., 0] += glow * 0.55
+    arr[..., 1] += glow * 0.7
+    arr[..., 2] += glow * 0.95
+
+    arr = np.clip(arr, 0, 255).astype(np.uint8)
+    bg = Image.fromarray(arr).filter(ImageFilter.GaussianBlur(18))
+    return bg.convert("RGBA")
+
+
+def _translucent_agar(
+    size: int, cx: int, cy: int, inner_r: int, rng
+) -> Image.Image:
+    """Semi-transparent warm cream agar layer."""
+    yy, xx = np.indices((size, size), dtype=np.float32)
     dist = np.sqrt((xx - cx) ** 2 + (yy - cy) ** 2)
-
-    arr = np.full((size, size, 3), 11, dtype=np.uint8)  # outer dark background
-
-    # Agar interior — warm cream with subtle darkening toward the rim
-    agar_mask = dist < inner_r
     t = np.clip(dist / inner_r, 0, 1)
-    center_col = np.array([222, 218, 202], dtype=np.float32)
-    edge_col = np.array([184, 178, 162], dtype=np.float32)
-    agar_rgb = center_col * (1 - t[..., None]) + edge_col * t[..., None]
 
-    # Subtle gradient brightening from top-left (lab light from above)
-    light = np.clip(1 - ((xx - cx) - (yy - cy)) / (inner_r * 2.5), 0.85, 1.08)
-    agar_rgb = np.clip(agar_rgb * light[..., None], 0, 255)
+    R = 244 - t * 32
+    G = 230 - t * 38
+    B = 175 - t * 38
+    inside = dist < inner_r
+    A = np.where(inside, 200 - t * 32, 0)
 
-    # Film grain (gaussian noise) — keeps the agar from looking plasticky
-    noise = rng.normal(0, 4.5, (size, size, 3))
-    agar_rgb = np.clip(agar_rgb + noise, 0, 255).astype(np.uint8)
-    arr[agar_mask] = agar_rgb[agar_mask]
+    grain = rng.normal(0, 3.5, (size, size))
+    R = np.clip(R + grain, 0, 255)
+    G = np.clip(G + grain, 0, 255)
+    B = np.clip(B + grain, 0, 255)
 
-    # Dish plastic rim — light, with a subtle inner shadow
-    rim_mask = (dist >= inner_r) & (dist < dish_r)
-    rim_t = (dist - inner_r) / max(1, dish_r - inner_r)
-    rim_inner = np.array([196, 195, 190], dtype=np.float32)
-    rim_outer = np.array([238, 236, 232], dtype=np.float32)
-    rim_rgb = rim_inner * (1 - rim_t[..., None]) + rim_outer * rim_t[..., None]
-    rim_rgb = np.clip(rim_rgb, 0, 255).astype(np.uint8)
-    arr[rim_mask] = rim_rgb[rim_mask]
-
-    return Image.fromarray(arr)
+    rgba = np.stack([R, G, B, A], axis=-1).astype(np.uint8)
+    return Image.fromarray(rgba, "RGBA")
 
 
-def _draw_colonies(
-    dish_img: Image.Image,
-    cx: int,
-    cy: int,
-    inner_r: int,
-    rng,
-    n_target: int = 220,
-) -> tuple[Image.Image, list[tuple[int, int, int]]]:
-    """Layer realistic colony blobs onto the agar; return list of (x,y,r)."""
-    size = dish_img.size[0]
-    overlay = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    draw = ImageDraw.Draw(overlay)
+def _plastic_rim(size: int, cx: int, cy: int, dish_r: int, inner_r: int) -> Image.Image:
+    """Light, slightly translucent dish rim with glass highlight."""
+    layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
 
+    # outer band — soft gray ring
+    draw.ellipse(
+        (cx - dish_r, cy - dish_r, cx + dish_r, cy + dish_r),
+        fill=(202, 207, 208, 145),
+    )
+    # inner cutout — agar will fill this
+    draw.ellipse(
+        (cx - inner_r, cy - inner_r, cx + inner_r, cy + inner_r),
+        fill=(0, 0, 0, 0),
+    )
+
+    # bright highlight arc on top-left of the rim (glass reflection)
+    hl = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    hd = ImageDraw.Draw(hl)
+    hd.arc(
+        (cx - dish_r + 3, cy - dish_r + 3, cx + dish_r - 3, cy + dish_r - 3),
+        start=205, end=335,
+        fill=(255, 255, 255, 150),
+        width=3,
+    )
+    layer = Image.alpha_composite(layer, hl)
+    return layer
+
+
+def _place_colonies(
+    cx: int, cy: int, inner_r: int, rng, n_target: int = 175
+) -> list[tuple[int, int, int]]:
+    margin = 32
     colonies: list[tuple[int, int, int]] = []
-    margin = 26
     attempts = 0
     while len(colonies) < n_target and attempts < n_target * 30:
         attempts += 1
-        # uniform-area sampling within the agar disc
         angle = rng.uniform(0, 2 * np.pi)
         rad = (inner_r - margin) * np.sqrt(rng.uniform(0, 1))
         x = cx + rad * np.cos(angle)
         y = cy + rad * np.sin(angle)
-        r = int(rng.integers(5, 14))
-        if any((x - px) ** 2 + (y - py) ** 2 < (r + pr + 1) ** 2 for px, py, pr in colonies):
+
+        s = rng.uniform()
+        if s < 0.5:
+            r = rng.uniform(4, 9)
+        elif s < 0.85:
+            r = rng.uniform(9, 16)
+        else:
+            r = rng.uniform(16, 24)
+        r = int(r)
+
+        # allow slight overlap (touching clusters)
+        if any((x - px) ** 2 + (y - py) ** 2 < (r + pr - 1) ** 2 for px, py, pr in colonies):
             continue
         colonies.append((int(x), int(y), r))
+    return colonies
 
-        # Natural colony tone: mostly cream/pale-yellow, occasionally pink/tan
-        col_pick = rng.uniform()
-        if col_pick < 0.55:
-            base = np.array([242, 236, 215])  # cream
-        elif col_pick < 0.78:
-            base = np.array([235, 223, 188])  # pale yellow
-        elif col_pick < 0.92:
-            base = np.array([220, 205, 188])  # light tan
-        else:
-            base = np.array([245, 226, 218])  # very faint pink
-        base = np.clip(base + rng.integers(-10, 10, size=3), 0, 255)
-        c = tuple(int(v) for v in base)
 
-        # slight elliptical asymmetry
+def _draw_colonies(
+    size: int, colonies: list[tuple[int, int, int]], rng
+) -> Image.Image:
+    """Realistic colored colonies with halo, body, inner ring, highlight."""
+    layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(layer)
+
+    for (x, y, r) in colonies:
+        pidx = int(rng.choice(len(COLONY_PALETTES), p=_COLONY_WEIGHTS))
+        mean_col, var, _ = COLONY_PALETTES[pidx]
+        color = tuple(int(v) for v in np.clip(
+            np.array(mean_col) + rng.integers(-var, var, 3), 0, 255
+        ))
+
+        # faint outer halo (zone of growth around some colonies)
+        if rng.uniform() < 0.42:
+            halo_r = int(r * 1.35)
+            halo_col = tuple(int(v) for v in np.clip(np.array(color) + 25, 0, 255))
+            draw.ellipse(
+                (x - halo_r, y - halo_r, x + halo_r, y + halo_r),
+                fill=(*halo_col, 55),
+            )
+
+        # drop shadow under the colony body
+        draw.ellipse(
+            (x - r - 1.4, y - r + 0.4, x + r + 1.4, y + r + 2.6),
+            fill=(15, 12, 8, 90),
+        )
+
+        # main body
         rx = r + rng.integers(-1, 2)
         ry = r + rng.integers(-1, 2)
+        draw.ellipse((x - rx, y - ry, x + rx, y + ry), fill=(*color, 252))
 
-        # drop shadow
+        # darker center ~30% of colonies
+        if rng.uniform() < 0.32:
+            inner_col = tuple(max(0, int(c * 0.72)) for c in color)
+            ir = int(min(rx, ry) * 0.55)
+            draw.ellipse((x - ir, y - ir, x + ir, y + ir), fill=(*inner_col, 210))
+
+        # specular highlight top-left
+        hr = max(2, int(min(rx, ry) * 0.5))
+        hx = x - rx * 0.32
+        hy = y - ry * 0.32
+        bright = tuple(int(v) for v in np.clip(np.array(color) + 38, 0, 255))
         draw.ellipse(
-            (x - rx - 1.4, y - ry + 0.5, x + rx + 1.4, y + ry + 2.5),
-            fill=(20, 18, 14, 55),
+            (hx - hr * 0.55, hy - hr * 0.55, hx + hr * 0.55, hy + hr * 0.55),
+            fill=(*bright, 120),
         )
-        # body
-        draw.ellipse((x - rx, y - ry, x + rx, y + ry), fill=(*c, 252))
-        # specular highlight (top-left)
-        hx = x - rx * 0.35
-        hy = y - ry * 0.35
-        hr = max(2.0, rx * 0.55)
-        highlight = tuple(int(v) for v in np.clip(base + 25, 0, 255))
-        draw.ellipse((hx - hr * 0.55, hy - hr * 0.55, hx + hr * 0.55, hy + hr * 0.55),
-                     fill=(*highlight, 110))
 
-    # tiny gaussian blur sells the photographic look
-    overlay = overlay.filter(ImageFilter.GaussianBlur(0.55))
-    return Image.alpha_composite(dish_img.convert("RGBA"), overlay), colonies
+    return layer.filter(ImageFilter.GaussianBlur(0.55))
 
 
-def _ai_detection_layer(size: int, colonies: list[tuple[int, int, int]]) -> Image.Image:
-    """Thin colored detection rings (not flat fills) — looks like real CV output."""
+def _ai_detection_layer(
+    size: int, colonies: list[tuple[int, int, int]], rng, detection_rate: float = 0.85
+) -> Image.Image:
+    """Thin colored rings on a fraction of colonies — like real CV output."""
     layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     for i, (x, y, r) in enumerate(colonies):
-        color = PALETTE_DETECT[i % len(PALETTE_DETECT)]
-        # super-faint inner tint
+        if rng.uniform() > detection_rate:
+            continue
+        c = PALETTE_DETECT[i % len(PALETTE_DETECT)]
         draw.ellipse(
-            (x - r - 1, y - r - 1, x + r + 1, y + r + 1),
-            fill=(*color, 38),
-        )
-        # outline
-        draw.ellipse(
-            (x - r - 1, y - r - 1, x + r + 1, y + r + 1),
-            outline=(*color, 235),
+            (x - r - 1.5, y - r - 1.5, x + r + 1.5, y + r + 1.5),
+            outline=(*c, 225),
             width=2,
         )
     return layer
@@ -151,28 +227,24 @@ def _id_labels(
     size: int,
     colonies: list[tuple[int, int, int]],
     rng,
-    n_labels: int = 5,
+    n_labels: int = 4,
 ) -> Image.Image:
-    """Floating ID chips connected to a handful of colonies."""
     layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     try:
-        font = ImageFont.truetype("segoeuib.ttf", 22)  # Segoe UI Bold
+        font = ImageFont.truetype("segoeuib.ttf", 22)
     except OSError:
         try:
-            font = ImageFont.truetype("segoeui.ttf", 22)
+            font = ImageFont.truetype("DejaVuSans-Bold.ttf", 22)
         except OSError:
-            try:
-                font = ImageFont.truetype("DejaVuSans-Bold.ttf", 22)
-            except OSError:
-                font = ImageFont.load_default()
+            font = ImageFont.load_default()
 
-    # pick well-spaced colonies
     if not colonies:
         return layer
-    picks: list[int] = []
+
     candidates = list(range(len(colonies)))
     rng.shuffle(candidates)
+    picks: list[int] = []
     for idx in candidates:
         x, y, _ = colonies[idx]
         if all(
@@ -188,95 +260,96 @@ def _id_labels(
         label = f"#{idx + 1:03d}"
         text_w = draw.textlength(label, font=font)
         text_h = 26
-        # offset the chip up-and-right or up-and-left based on position
         side = 1 if x < size * 0.55 else -1
         lx = x + side * (r + 30)
         ly = y - r - 40
         if side == -1:
             lx -= text_w + 22
-
         chip = (lx - 12, ly - 6, lx + text_w + 12, ly + text_h + 6)
-        # connector
         cx_chip = (chip[0] + chip[2]) / 2
         draw.line(
             (cx_chip, chip[3], x + (r * 0.6 * -side), y - r * 0.4),
             fill=(91, 142, 217, 200),
             width=2,
         )
-        # pill
         draw.rounded_rectangle(
             chip,
             radius=8,
-            fill=(15, 19, 26, 225),
-            outline=(91, 142, 217, 215),
+            fill=(13, 17, 24, 235),
+            outline=(91, 142, 217, 225),
             width=2,
         )
-        draw.text((lx, ly), label, fill=(230, 238, 250, 250), font=font)
+        draw.text((lx, ly), label, fill=(232, 240, 252, 250), font=font)
     return layer
 
 
-def make_hero_dish(out_path: Path, size: int = 1100) -> None:
-    rng = np.random.default_rng(7)
+# ----------------------------------------------------------------------
+# Main composers
+# ----------------------------------------------------------------------
+
+def _compose_dish(size: int, rng, n_colonies: int = 175) -> tuple[Image.Image, list]:
     cx = cy = size // 2
     dish_r = int(size * 0.46)
-    inner_r = int(dish_r * 0.92)
+    inner_r = int(dish_r * 0.93)
 
-    # Compose the dish WITHOUT labels first
-    img = _agar_background(size, cx, cy, dish_r, inner_r, rng)
-    img, colonies = _draw_colonies(img, cx, cy, inner_r, rng, n_target=210)
-    img = Image.alpha_composite(img, _ai_detection_layer(size, colonies))
+    # 1. lab background (will show through translucent agar)
+    canvas = _lab_background(size, rng)
+    # 2. soft drop shadow under the dish
+    sh = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    sd = ImageDraw.Draw(sh)
+    sd.ellipse(
+        (cx - dish_r - 8, cy - dish_r + 22, cx + dish_r + 8, cy + dish_r + 34),
+        fill=(0, 0, 0, 100),
+    )
+    sh = sh.filter(ImageFilter.GaussianBlur(22))
+    canvas = Image.alpha_composite(canvas, sh)
+    # 3. plastic rim
+    canvas = Image.alpha_composite(canvas, _plastic_rim(size, cx, cy, dish_r, inner_r))
+    # 4. translucent agar
+    canvas = Image.alpha_composite(canvas, _translucent_agar(size, cx, cy, inner_r, rng))
+    # 5. colonies
+    colonies = _place_colonies(cx, cy, inner_r, rng, n_target=n_colonies)
+    canvas = Image.alpha_composite(canvas, _draw_colonies(size, colonies, rng))
+    # 6. AI detection overlay
+    canvas = Image.alpha_composite(canvas, _ai_detection_layer(size, colonies, rng))
+    # 7. final glass rim highlight on top of everything
+    rim_hl = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    rh = ImageDraw.Draw(rim_hl)
+    rh.arc(
+        (cx - dish_r + 4, cy - dish_r + 4, cx + dish_r - 4, cy + dish_r - 4),
+        start=210, end=325,
+        fill=(255, 255, 255, 95),
+        width=2,
+    )
+    canvas = Image.alpha_composite(canvas, rim_hl)
+    return canvas, colonies
 
-    # Transparent canvas — the CSS will composite this onto the page bg.
-    # This avoids a dark ring artefact when border-radius:50% crops the PNG.
-    bg = Image.new("RGBA", (size, size), (0, 0, 0, 0))
 
-    # Soft outer glow (slight blue halo around the dish)
-    glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    gd = ImageDraw.Draw(glow)
-    for i in range(18, 0, -1):
-        alpha = max(0, 6 - i // 4)
-        gd.ellipse(
-            (cx - dish_r - i * 4, cy - dish_r - i * 4,
-             cx + dish_r + i * 4, cy + dish_r + i * 4),
-            outline=(91, 142, 217, alpha),
-            width=3,
-        )
-    glow = glow.filter(ImageFilter.GaussianBlur(12))
-    bg = Image.alpha_composite(bg, glow)
+def make_hero_dish(out_path: Path, size: int = 1200) -> None:
+    rng = np.random.default_rng(9)
+    cx = cy = size // 2
+    dish_r = int(size * 0.46)
 
-    # Mask sized exactly to the dish — no dark ring between dish and bg
-    dish_mask = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(dish_mask).ellipse(
-        (cx - dish_r, cy - dish_r, cx + dish_r, cy + dish_r),
+    full, colonies = _compose_dish(size, rng, n_colonies=180)
+
+    # Clip everything outside the dish (plus a small ring for the shadow)
+    pad = 14
+    final = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+    mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(mask).ellipse(
+        (cx - dish_r - pad, cy - dish_r - pad,
+         cx + dish_r + pad, cy + dish_r + pad),
         fill=255,
     )
-    bg.paste(img, (0, 0), dish_mask)
+    # Feather the mask edge a bit so the dish doesn't have a hard outline
+    mask = mask.filter(ImageFilter.GaussianBlur(2))
+    final.paste(full, (0, 0), mask)
 
-    # Now draw labels ONCE, on top of the masked dish, so chips can extend
-    # outside the rim without being clipped.
-    bg = Image.alpha_composite(bg, _id_labels(size, colonies, rng, n_labels=4))
+    # Labels are drawn on top of the masked dish so they can extend out
+    final = Image.alpha_composite(final, _id_labels(size, colonies, rng, n_labels=4))
 
-    bg.save(out_path, "PNG", optimize=True)
-    print(f"Saved {out_path} ({bg.size[0]}x{bg.size[1]})")
-
-
-# ----------------------------------------------------------------------
-# OG image
-# ----------------------------------------------------------------------
-
-def _mini_dish(size: int = 480) -> Image.Image:
-    rng = np.random.default_rng(3)
-    cx = cy = size // 2
-    dish_r = int(size * 0.46)
-    inner_r = int(dish_r * 0.92)
-    img = _agar_background(size, cx, cy, dish_r, inner_r, rng)
-    img, colonies = _draw_colonies(img, cx, cy, inner_r, rng, n_target=130)
-    img = Image.alpha_composite(img, _ai_detection_layer(size, colonies))
-    mask = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
-    bg = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    bg.paste(img, (0, 0), mask)
-    return bg
+    final.save(out_path, "PNG", optimize=True)
+    print(f"Saved {out_path} ({final.size[0]}x{final.size[1]})")
 
 
 def make_og_image(out_path: Path) -> None:
@@ -292,8 +365,18 @@ def make_og_image(out_path: Path) -> None:
         )
     canvas = Image.alpha_composite(canvas.convert("RGBA"), blob).convert("RGB")
 
-    mini = _mini_dish(440)
-    canvas.paste(mini.convert("RGB"), (W - 480, (H - 440) // 2))
+    # Small dish in the right side, mirroring main hero look
+    mini_size = 440
+    rng = np.random.default_rng(2)
+    mini, _ = _compose_dish(mini_size, rng, n_colonies=110)
+    mini_mask = Image.new("L", (mini_size, mini_size), 0)
+    ImageDraw.Draw(mini_mask).ellipse((0, 0, mini_size, mini_size), fill=255)
+    mini_mask = mini_mask.filter(ImageFilter.GaussianBlur(2))
+    mini_final = Image.new("RGBA", (mini_size, mini_size), (0, 0, 0, 0))
+    mini_final.paste(mini, (0, 0), mini_mask)
+    canvas_rgba = canvas.convert("RGBA")
+    canvas_rgba.alpha_composite(mini_final, (W - 480, (H - mini_size) // 2))
+    canvas = canvas_rgba.convert("RGB")
 
     draw = ImageDraw.Draw(canvas)
     try:
