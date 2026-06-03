@@ -157,12 +157,15 @@ def _id_labels(
     layer = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     draw = ImageDraw.Draw(layer)
     try:
-        font = ImageFont.truetype("segoeui.ttf", 13)
+        font = ImageFont.truetype("segoeuib.ttf", 22)  # Segoe UI Bold
     except OSError:
         try:
-            font = ImageFont.truetype("DejaVuSans.ttf", 13)
+            font = ImageFont.truetype("segoeui.ttf", 22)
         except OSError:
-            font = ImageFont.load_default()
+            try:
+                font = ImageFont.truetype("DejaVuSans-Bold.ttf", 22)
+            except OSError:
+                font = ImageFont.load_default()
 
     # pick well-spaced colonies
     if not colonies:
@@ -184,30 +187,31 @@ def _id_labels(
         x, y, r = colonies[idx]
         label = f"#{idx + 1:03d}"
         text_w = draw.textlength(label, font=font)
-        text_h = 14
+        text_h = 26
         # offset the chip up-and-right or up-and-left based on position
         side = 1 if x < size * 0.55 else -1
-        lx = x + side * (r + 18)
-        ly = y - r - 22
+        lx = x + side * (r + 30)
+        ly = y - r - 40
         if side == -1:
-            lx -= text_w + 12
+            lx -= text_w + 22
 
-        chip = (lx - 6, ly - 3, lx + text_w + 6, ly + text_h + 3)
+        chip = (lx - 12, ly - 6, lx + text_w + 12, ly + text_h + 6)
         # connector
+        cx_chip = (chip[0] + chip[2]) / 2
         draw.line(
-            ((chip[0] + chip[2]) / 2, chip[3], x + (r * 0.6 * -side), y - r * 0.4),
-            fill=(91, 142, 217, 180),
-            width=1,
+            (cx_chip, chip[3], x + (r * 0.6 * -side), y - r * 0.4),
+            fill=(91, 142, 217, 200),
+            width=2,
         )
         # pill
         draw.rounded_rectangle(
             chip,
-            radius=5,
-            fill=(15, 19, 26, 215),
-            outline=(91, 142, 217, 200),
-            width=1,
+            radius=8,
+            fill=(15, 19, 26, 225),
+            outline=(91, 142, 217, 215),
+            width=2,
         )
-        draw.text((lx, ly), label, fill=(225, 232, 245, 245), font=font)
+        draw.text((lx, ly), label, fill=(230, 238, 250, 250), font=font)
     return layer
 
 
@@ -217,28 +221,39 @@ def make_hero_dish(out_path: Path, size: int = 1100) -> None:
     dish_r = int(size * 0.46)
     inner_r = int(dish_r * 0.92)
 
+    # Compose the dish WITHOUT labels first
     img = _agar_background(size, cx, cy, dish_r, inner_r, rng)
     img, colonies = _draw_colonies(img, cx, cy, inner_r, rng, n_target=210)
     img = Image.alpha_composite(img, _ai_detection_layer(size, colonies))
-    img = Image.alpha_composite(img, _id_labels(size, colonies, rng, n_labels=4))
 
-    # outer vignette ring around the dish for grounding
+    # Final canvas with same dark background as the dish's outer pixels
+    bg = Image.new("RGBA", (size, size), (10, 13, 18, 255))
+
+    # Soft outer glow drawn directly on the bg
     glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
-    for i in range(14, 0, -1):
+    for i in range(18, 0, -1):
+        alpha = max(0, 5 - i // 4)
         gd.ellipse(
-            (cx - dish_r - i * 3, cy - dish_r - i * 3, cx + dish_r + i * 3, cy + dish_r + i * 3),
-            outline=(91, 142, 217, max(0, 6 - i // 2)),
-            width=2,
+            (cx - dish_r - i * 4, cy - dish_r - i * 4,
+             cx + dish_r + i * 4, cy + dish_r + i * 4),
+            outline=(91, 142, 217, alpha),
+            width=3,
         )
-    glow = glow.filter(ImageFilter.GaussianBlur(8))
-    img = Image.alpha_composite(glow, img)
+    glow = glow.filter(ImageFilter.GaussianBlur(12))
+    bg = Image.alpha_composite(bg, glow)
 
-    # crop to a square circle on dark background
-    mask = Image.new("L", (size, size), 0)
-    ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
-    bg = Image.new("RGBA", (size, size), (10, 13, 18, 255))
-    bg.paste(img, (0, 0), mask)
+    # Mask sized exactly to the dish — no dark ring between dish and bg
+    dish_mask = Image.new("L", (size, size), 0)
+    ImageDraw.Draw(dish_mask).ellipse(
+        (cx - dish_r, cy - dish_r, cx + dish_r, cy + dish_r),
+        fill=255,
+    )
+    bg.paste(img, (0, 0), dish_mask)
+
+    # Now draw labels ONCE, on top of the masked dish, so chips can extend
+    # outside the rim without being clipped.
+    bg = Image.alpha_composite(bg, _id_labels(size, colonies, rng, n_labels=4))
 
     bg.save(out_path, "PNG", optimize=True)
     print(f"Saved {out_path} ({bg.size[0]}x{bg.size[1]})")
