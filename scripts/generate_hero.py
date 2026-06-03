@@ -226,14 +226,15 @@ def make_hero_dish(out_path: Path, size: int = 1100) -> None:
     img, colonies = _draw_colonies(img, cx, cy, inner_r, rng, n_target=210)
     img = Image.alpha_composite(img, _ai_detection_layer(size, colonies))
 
-    # Final canvas with same dark background as the dish's outer pixels
-    bg = Image.new("RGBA", (size, size), (10, 13, 18, 255))
+    # Transparent canvas — the CSS will composite this onto the page bg.
+    # This avoids a dark ring artefact when border-radius:50% crops the PNG.
+    bg = Image.new("RGBA", (size, size), (0, 0, 0, 0))
 
-    # Soft outer glow drawn directly on the bg
+    # Soft outer glow (slight blue halo around the dish)
     glow = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     gd = ImageDraw.Draw(glow)
     for i in range(18, 0, -1):
-        alpha = max(0, 5 - i // 4)
+        alpha = max(0, 6 - i // 4)
         gd.ellipse(
             (cx - dish_r - i * 4, cy - dish_r - i * 4,
              cx + dish_r + i * 4, cy + dish_r + i * 4),
@@ -273,7 +274,7 @@ def _mini_dish(size: int = 480) -> Image.Image:
     img = Image.alpha_composite(img, _ai_detection_layer(size, colonies))
     mask = Image.new("L", (size, size), 0)
     ImageDraw.Draw(mask).ellipse((0, 0, size, size), fill=255)
-    bg = Image.new("RGBA", (size, size), (10, 13, 18, 255))
+    bg = Image.new("RGBA", (size, size), (0, 0, 0, 0))
     bg.paste(img, (0, 0), mask)
     return bg
 

@@ -227,11 +227,11 @@ a:hover { color: var(--accent-3); text-decoration: none; }
   width: 100%;
   max-width: 460px;
   height: auto;
-  border-radius: 50%;
-  box-shadow:
-    0 30px 70px rgba(0, 0, 0, 0.6),
-    0 0 0 1px var(--border),
-    0 0 120px rgba(91, 142, 217, 0.22);
+  /* PNG already contains a transparent background and a round dish; no
+     border-radius needed — it would clip the soft outer glow baked into
+     the image. */
+  filter: drop-shadow(0 30px 60px rgba(0, 0, 0, 0.55))
+          drop-shadow(0 0 80px rgba(91, 142, 217, 0.22));
   animation: float 9s ease-in-out infinite;
 }
 
