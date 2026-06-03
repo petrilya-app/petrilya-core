@@ -8,6 +8,7 @@ import numpy as np
 from PySide6.QtCore import Qt, QThreadPool
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
+    QButtonGroup,
     QCheckBox,
     QDoubleSpinBox,
     QFileDialog,
@@ -19,6 +20,8 @@ from PySide6.QtWidgets import (
     QMessageBox,
     QProgressBar,
     QPushButton,
+    QRadioButton,
+    QSlider,
     QSplitter,
     QStatusBar,
     QTableWidget,
@@ -30,7 +33,8 @@ from PySide6.QtWidgets import (
 from petrilya.export.csv_writer import write_csv
 from petrilya.export.json_manifest import build_manifest, write_manifest
 from petrilya.export.pdf_report import write_pdf_report
-from petrilya.ui.image_view import ImageView
+from petrilya.metrics.colony import compute_colony_metrics
+from petrilya.ui.image_view import ImageCanvas
 from petrilya.ui.worker import AnalysisWorker, BatchWorker
 
 
@@ -41,7 +45,7 @@ class MainWindow(QMainWindow):
     def __init__(self) -> None:
         super().__init__()
         self.setWindowTitle("Petrilya — colony counter (preview)")
-        self.resize(1320, 820)
+        self.resize(1380, 860)
         self.setAcceptDrops(True)
 
         self.threadpool = QThreadPool.globalInstance()
@@ -49,7 +53,6 @@ class MainWindow(QMainWindow):
         # state for the currently loaded image
         self.current_image_path: Path | None = None
         self.current_image: np.ndarray | None = None
-        self.current_masks: np.ndarray | None = None
         self.current_metrics: list[dict] = []
         self.last_elapsed: float = 0.0
         self.last_engine_name: str = ""
@@ -97,12 +100,23 @@ class MainWindow(QMainWindow):
         quit_act.triggered.connect(self.close)
         file_menu.addAction(quit_act)
 
+        view_menu = bar.addMenu("&View")
+        fit_act = QAction("&Fit to window", self)
+        fit_act.setShortcut(QKeySequence("F"))
+        fit_act.triggered.connect(self._fit_canvas)
+        view_menu.addAction(fit_act)
+        reset_act = QAction("&Reset zoom (100%)", self)
+        reset_act.setShortcut(QKeySequence("0"))
+        reset_act.triggered.connect(self._reset_canvas_zoom)
+        view_menu.addAction(reset_act)
+
     def _build_central(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # left: image
-        self.image_view = ImageView()
-        splitter.addWidget(self.image_view)
+        # left: canvas
+        self.canvas = ImageCanvas()
+        self.canvas.masks_edited.connect(self.on_masks_edited)
+        splitter.addWidget(self.canvas)
 
         # right: controls + results
         right = QWidget()
@@ -135,11 +149,67 @@ class MainWindow(QMainWindow):
         self.analyze_btn.clicked.connect(self.run_analysis)
         right_layout.addWidget(self.analyze_btn)
 
-        # ---- view options ----
-        self.overlay_check = QCheckBox("Show mask overlay")
-        self.overlay_check.setChecked(True)
-        self.overlay_check.toggled.connect(self.image_view.toggle_overlay)
-        right_layout.addWidget(self.overlay_check)
+        # ---- view & edit group ----
+        view_box = QGroupBox("View & edit")
+        view_layout = QVBoxLayout(view_box)
+
+        # transparency slider
+        alpha_row = QHBoxLayout()
+        alpha_row.addWidget(QLabel("Overlay:"))
+        self.alpha_slider = QSlider(Qt.Orientation.Horizontal)
+        self.alpha_slider.setRange(0, 100)
+        self.alpha_slider.setValue(43)  # ~110/255
+        self.alpha_slider.valueChanged.connect(self._on_alpha_changed)
+        self.alpha_value_label = QLabel("43%")
+        self.alpha_value_label.setMinimumWidth(36)
+        alpha_row.addWidget(self.alpha_slider)
+        alpha_row.addWidget(self.alpha_value_label)
+        view_layout.addLayout(alpha_row)
+
+        # edit mode radios
+        edit_row = QHBoxLayout()
+        edit_row.addWidget(QLabel("Mode:"))
+        self.mode_view = QRadioButton("View")
+        self.mode_view.setChecked(True)
+        self.mode_erase = QRadioButton("Erase")
+        self.mode_brush = QRadioButton("Brush")
+        self._mode_group = QButtonGroup(self)
+        self._mode_group.addButton(self.mode_view)
+        self._mode_group.addButton(self.mode_erase)
+        self._mode_group.addButton(self.mode_brush)
+        self.mode_view.toggled.connect(self._on_mode_changed)
+        self.mode_erase.toggled.connect(self._on_mode_changed)
+        self.mode_brush.toggled.connect(self._on_mode_changed)
+        edit_row.addWidget(self.mode_view)
+        edit_row.addWidget(self.mode_erase)
+        edit_row.addWidget(self.mode_brush)
+        view_layout.addLayout(edit_row)
+
+        # brush size
+        brush_row = QHBoxLayout()
+        brush_row.addWidget(QLabel("Brush:"))
+        self.brush_slider = QSlider(Qt.Orientation.Horizontal)
+        self.brush_slider.setRange(2, 60)
+        self.brush_slider.setValue(14)
+        self.brush_slider.valueChanged.connect(self.canvas.set_brush_size)
+        self.brush_slider.valueChanged.connect(
+            lambda v: self.brush_value_label.setText(f"{v}px")
+        )
+        self.brush_value_label = QLabel("14px")
+        self.brush_value_label.setMinimumWidth(36)
+        brush_row.addWidget(self.brush_slider)
+        brush_row.addWidget(self.brush_value_label)
+        view_layout.addLayout(brush_row)
+
+        hint = QLabel(
+            "<span style='color:#888;font-size:11px'>"
+            "Wheel = zoom &nbsp;|&nbsp; Space-drag or MMB = pan &nbsp;|&nbsp; "
+            "F = fit &nbsp;|&nbsp; 0 = reset zoom</span>"
+        )
+        hint.setWordWrap(True)
+        view_layout.addWidget(hint)
+
+        right_layout.addWidget(view_box)
 
         # ---- summary ----
         self.summary_label = QLabel("No image loaded.")
@@ -190,8 +260,9 @@ class MainWindow(QMainWindow):
 
         self.progress = QProgressBar()
         self.progress.setRange(0, 0)
-        self.progress.setMaximumWidth(220)
+        self.progress.setMaximumWidth(240)
         self.progress.setVisible(False)
+        self.progress.setTextVisible(True)
         bar.addPermanentWidget(self.progress)
 
     # -------------------------------- helpers -------------------------------
@@ -204,6 +275,27 @@ class MainWindow(QMainWindow):
         self.csv_btn.setEnabled(enabled)
         self.pdf_btn.setEnabled(enabled)
         self.json_btn.setEnabled(enabled)
+
+    def _fit_canvas(self) -> None:
+        self.canvas.fit_to_window()
+
+    def _reset_canvas_zoom(self) -> None:
+        self.canvas.reset_zoom()
+
+    def _on_alpha_changed(self, percent: int) -> None:
+        self.alpha_value_label.setText(f"{percent}%")
+        self.canvas.set_overlay_alpha(int(round(percent * 255 / 100)))
+
+    def _on_mode_changed(self) -> None:
+        if self.mode_view.isChecked():
+            self.canvas.set_edit_mode(ImageCanvas.EDIT_NONE)
+            self.brush_slider.setEnabled(False)
+        elif self.mode_erase.isChecked():
+            self.canvas.set_edit_mode(ImageCanvas.EDIT_ERASE)
+            self.brush_slider.setEnabled(False)
+        elif self.mode_brush.isChecked():
+            self.canvas.set_edit_mode(ImageCanvas.EDIT_BRUSH)
+            self.brush_slider.setEnabled(True)
 
     # -------------------------------- actions -------------------------------
 
@@ -228,9 +320,8 @@ class MainWindow(QMainWindow):
 
         self.current_image_path = path
         self.current_image = arr
-        self.current_masks = None
         self.current_metrics = []
-        self.image_view.set_image(arr)
+        self.canvas.set_image(arr)
         self.summary_label.setText(
             f"Loaded: {path.name}  ({arr.shape[1]}x{arr.shape[0]})"
         )
@@ -244,6 +335,7 @@ class MainWindow(QMainWindow):
             return
         self.analyze_btn.setEnabled(False)
         self._enable_exports(False)
+        self.progress.setRange(0, 0)
         self.progress.setVisible(True)
         self.status_label.setText("Working...")
 
@@ -269,13 +361,12 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(False)
         self.analyze_btn.setEnabled(True)
         self.current_image = image
-        self.current_masks = masks
         self.current_metrics = metrics
         self.last_elapsed = elapsed
         self.last_engine_name = engine_name
         self.last_engine_params = engine_params
 
-        self.image_view.set_overlay(masks)
+        self.canvas.set_masks(masks)
 
         unit = "um^2" if self._scale_value() else "px"
         self.summary_label.setText(
@@ -291,6 +382,25 @@ class MainWindow(QMainWindow):
         self.analyze_btn.setEnabled(True)
         QMessageBox.critical(self, "Analysis failed", msg)
         self.status_label.setText("Error.")
+
+    def on_masks_edited(self) -> None:
+        """Recompute metrics after the user edits masks in the canvas."""
+        masks = self.canvas.masks()
+        if masks is None:
+            return
+        self.current_metrics = compute_colony_metrics(
+            masks, scale_um_per_px=self._scale_value()
+        )
+        unit = "um^2" if self._scale_value() else "px"
+        self.summary_label.setText(
+            f"<b>{len(self.current_metrics)}</b> colonies (after manual edit)<br>"
+            f"<span style='color:#aaa'>engine: {self.last_engine_name} | unit: {unit}</span>"
+        )
+        self._populate_table(self.current_metrics)
+        self._enable_exports(bool(self.current_metrics))
+        self.status_label.setText(
+            f"Manual edit — {len(self.current_metrics)} colonies"
+        )
 
     def _populate_table(self, metrics: list[dict]) -> None:
         if not metrics:
@@ -341,10 +451,11 @@ class MainWindow(QMainWindow):
             self.status_label.setText(f"Saved {path_str}")
 
     def export_pdf(self) -> None:
+        masks = self.canvas.masks()
         if (
             not self.current_metrics
             or self.current_image is None
-            or self.current_masks is None
+            or masks is None
         ):
             QMessageBox.information(self, "No data", "Run analysis first.")
             return
@@ -360,7 +471,7 @@ class MainWindow(QMainWindow):
             write_pdf_report(
                 Path(path_str),
                 image=self.current_image,
-                masks=self.current_masks,
+                masks=masks,
                 metrics=self.current_metrics,
                 image_name=self.current_image_path.name
                 if self.current_image_path
@@ -377,6 +488,7 @@ class MainWindow(QMainWindow):
         if not self.current_metrics or self.current_image_path is None:
             QMessageBox.information(self, "No data", "Run analysis first.")
             return
+        masks = self.canvas.masks()
         path_str, _ = QFileDialog.getSaveFileName(
             self,
             "Save JSON manifest",
@@ -388,9 +500,7 @@ class MainWindow(QMainWindow):
         try:
             manifest = build_manifest(
                 image_path=self.current_image_path,
-                masks_shape=self.current_masks.shape
-                if self.current_masks is not None
-                else (0, 0),
+                masks_shape=masks.shape if masks is not None else (0, 0),
                 n_objects=len(self.current_metrics),
                 elapsed_seconds=self.last_elapsed,
                 engine_name=self.last_engine_name,
@@ -412,7 +522,9 @@ class MainWindow(QMainWindow):
         if not out_dir:
             return
 
-        self.progress.setRange(0, 0)
+        self.progress.setRange(0, 1)
+        self.progress.setValue(0)
+        self.progress.setFormat("Batch %v/%m (%p%)")
         self.progress.setVisible(True)
         self.status_label.setText("Batch: scanning...")
 
@@ -435,6 +547,7 @@ class MainWindow(QMainWindow):
     def on_batch_done(self, ok: int, fail: int, summary_csv: Path) -> None:
         self.progress.setVisible(False)
         self.progress.setRange(0, 0)
+        self.progress.setFormat("")
         QMessageBox.information(
             self,
             "Batch complete",

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Petrilya — AI colony counter for biology labs</title>
+  <meta name="description" content="Petrilya is an open-source desktop application that turns a phone photo of a Petri dish into a colony count in seconds. No code, no cloud, no GPU required." />
+  <meta property="og:title" content="Petrilya — AI colony counter" />
+  <meta property="og:description" content="Drag, count, export. Open-source desktop app for microbiology." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://petrilya.com" />
+  <link rel="icon" type="image/svg+xml" href="favicon.svg" />
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="hero">
+    <nav class="nav">
+      <div class="brand">
+        <span class="logo-dot"></span>
+        <span class="brand-name">Petrilya</span>
+      </div>
+      <div class="nav-links">
+        <a href="#features">Features</a>
+        <a href="#download">Download</a>
+        <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener">GitHub</a>
+      </div>
+    </nav>
+
+    <div class="hero-content">
+      <h1>Count colonies on a Petri dish<br><span class="accent">in seconds, not hours.</span></h1>
+      <p class="lead">
+        Petrilya is an open-source desktop application that turns a phone photo of a Petri dish into a structured colony report. Drag the image in, click <em>Analyze</em>, export to CSV or PDF.
+      </p>
+      <div class="cta-row">
+        <a href="#download" class="btn btn-primary">Download for Windows</a>
+        <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener" class="btn btn-ghost">View source on GitHub</a>
+      </div>
+      <p class="hero-meta">
+        <span class="badge">Open-source</span>
+        <span class="badge">No cloud</span>
+        <span class="badge">No GPU required</span>
+        <span class="badge">AGPL-3.0</span>
+      </p>
+    </div>
+  </header>
+
+  <section id="features" class="features">
+    <div class="container">
+      <h2>What it does</h2>
+      <div class="grid">
+        <div class="card">
+          <div class="card-icon">📥</div>
+          <h3>Drag & drop</h3>
+          <p>Drop a JPG, PNG, or TIFF straight from your phone or microscope. Batch a whole folder when you have a hundred dishes.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">🔬</div>
+          <h3>AI segmentation</h3>
+          <p>Powered by Cellpose under the hood. Pretrained models recognise colonies of different shapes without any setup.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">✏️</div>
+          <h3>Fix what AI got wrong</h3>
+          <p>Erase a misdetected colony with a click. Paint in one the model missed with the brush tool. Metrics recalculate instantly.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📏</div>
+          <h3>Real units</h3>
+          <p>Set micrometers-per-pixel and your areas come out in μm² and diameters in μm — ready for the methods section.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">📄</div>
+          <h3>Publication-ready exports</h3>
+          <p>One-page PDF report with preview, histogram and table. CSV for spreadsheets. JSON manifest with SHA-256 for reproducibility.</p>
+        </div>
+        <div class="card">
+          <div class="card-icon">💻</div>
+          <h3>Works on your laptop</h3>
+          <p>Windows, macOS, Linux. CUDA when you have it, plain CPU when you don't. Your data never leaves the machine.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section id="download" class="download">
+    <div class="container">
+      <h2>Download</h2>
+      <p class="lead">
+        Petrilya is in <strong>pre-alpha</strong>. There's no installer yet — the project is being built in public. To try the in-progress build, clone the repository.
+      </p>
+      <pre class="code"><code>git clone https://github.com/petrilya-app/petrilya-core.git
+cd petrilya-core
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .
+petrilya-ui</code></pre>
+      <p>
+        <a href="https://github.com/petrilya-app/petrilya-core/releases" class="btn btn-primary" target="_blank" rel="noopener">Releases on GitHub</a>
+        <a href="https://github.com/petrilya-app/petrilya-core/issues" class="btn btn-ghost" target="_blank" rel="noopener">Report an issue</a>
+      </p>
+    </div>
+  </section>
+
+  <section class="for-labs">
+    <div class="container">
+      <h2>For labs and pharma</h2>
+      <p>
+        Petrilya is dual-licensed: <strong>AGPL-3.0</strong> for the open-source build, and a commercial license for organisations that need on-premise deployment without copyleft obligations — including air-gapped lab networks and GMP-relevant workflows.
+      </p>
+      <p>
+        Interested in a pilot, custom integration with your LIMS, or training data? <a href="mailto:hello@petrilya.com">hello@petrilya.com</a>
+      </p>
+    </div>
+  </section>
+
+  <footer class="footer">
+    <div class="container">
+      <div class="footer-row">
+        <div>
+          <strong>Petrilya</strong>
+          <p class="muted">Open-source colony counter for biology labs.</p>
+        </div>
+        <div>
+          <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener">GitHub</a>
+          <a href="https://github.com/petrilya-app/petrilya-core/blob/main/LICENSE" target="_blank" rel="noopener">License</a>
+          <a href="mailto:hello@petrilya.com">Contact</a>
+        </div>
+      </div>
+      <p class="muted small">© 2026 Petrilya. Built with Cellpose, PySide6, ONNX Runtime.</p>
+    </div>
+  </footer>
+</body>
+</html>
