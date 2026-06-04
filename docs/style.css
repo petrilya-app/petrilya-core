@@ -95,10 +95,7 @@ html.light .step,
 html.light .card {
   box-shadow: 0 1px 3px rgba(40, 50, 70, 0.04);
 }
-html.light .hero-art img {
-  filter: drop-shadow(0 30px 60px rgba(50, 60, 80, 0.25))
-          drop-shadow(0 0 80px rgba(47, 106, 134, 0.15));
-}
+/* (light theme dish-stage drop-shadow lives in the .dish-stage block) */
 html.light .hero-art-caption {
   box-shadow: 0 8px 24px rgba(50, 60, 80, 0.16);
 }
@@ -449,7 +446,11 @@ a:hover { color: var(--accent-2); }
   display: flex;
   justify-content: center;
 }
-.hero-art img {
+/* Direct-child img (legacy single-image hero — kept for safety if used).
+ * Crucially scoped to '>' so it does NOT apply to .dish-base or .colony
+ * images nested inside .dish-stage. The new layered composition uses the
+ * .dish-stage rules below for sizing / float / drop-shadow.            */
+.hero-art > img {
   width: 100%;
   max-width: 480px;
   height: auto;
@@ -476,27 +477,27 @@ html.light .dish-stage {
           drop-shadow(0 0 70px rgba(122, 183, 208, 0.12));
 }
 
-.dish-base {
+/* Higher-specificity selectors so nothing in .hero-art (or future
+ * additions) can accidentally override the layered composition. */
+.dish-stage .dish-base {
   position: absolute;
   inset: 0;
   width: 100%;
   height: 100%;
-  /* override the .hero-art img rules — base must not animate independently */
+  max-width: none;
   animation: none;
   filter: none;
-  max-width: none;
   z-index: 1;
 }
 
-.colony {
+.dish-stage .colony {
   position: absolute;
   pointer-events: none;
-  /* base transform applied inline by JS; we layer on a soft entrance */
   opacity: 0;
   animation: colony-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.35));
-  /* override .hero-art img defaults */
   max-width: none;
+  height: auto;
 }
 @keyframes colony-in {
   from { opacity: 0; }
@@ -505,7 +506,7 @@ html.light .dish-stage {
 
 @media (prefers-reduced-motion: reduce) {
   .dish-stage { animation: none; }
-  .colony { animation: none; opacity: 1; }
+  .dish-stage .colony { animation: none; opacity: 1; }
 }
 
 /* corner brackets — vintage scientific instrument */
@@ -1176,7 +1177,8 @@ html.light .theme-toggle .theme-icon-moon {
     margin-top: 30px;
     min-height: 0;
   }
-  .hero-art img { max-width: 360px; }
+  .hero-art > img { max-width: 360px; }
+  .hero-art .dish-stage { max-width: 360px; }
   .steps {
     grid-template-columns: 1fr;
     gap: 14px;
