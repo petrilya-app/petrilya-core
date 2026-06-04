@@ -140,68 +140,171 @@
       <h2>Как это работает</h2>
       <p class="section-lead">Три клика от фото в телефоне до отчёта на столе у руководителя.</p>
 
-      <ol class="steps">
-        <li class="step">
-          <div class="step-num">01</div>
+      <div class="steps">
+
+        <article class="step">
+          <header class="step-header">
+            <span class="step-num">01</span>
+            <span class="step-tag">ВХОД</span>
+          </header>
           <div class="step-body">
             <h3>Перетащите изображение</h3>
             <p>JPG, PNG или TIFF — с микроскопа, телефона или сканера. Обработайте сразу целую папку в пакетном режиме.</p>
           </div>
-          <svg class="step-art" viewBox="0 0 220 140" aria-hidden="true">
-            <rect x="20" y="20" width="180" height="100" rx="6" fill="none" stroke="#3a4358" stroke-width="1.2" stroke-dasharray="4 5"/>
-            <g transform="translate(110 70)">
-              <path d="M-18 4 L0 -14 L18 4" stroke="#f0c84a" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-              <path d="M0 -14 L0 16" stroke="#f0c84a" stroke-width="2" stroke-linecap="round"/>
-              <path d="M-22 22 L22 22" stroke="#f0c84a" stroke-width="2" stroke-linecap="round" opacity="0.5"/>
-            </g>
+          <dl class="step-spec">
+            <div><dt>Форматы</dt><dd>JPG · PNG · TIFF · BMP</dd></div>
+            <div><dt>Режим</dt><dd>Один · Пакет</dd></div>
+            <div><dt>Макс. размер</dt><dd>16K × 16K</dd></div>
+          </dl>
+          <div class="step-art">
+            <svg viewBox="0 0 240 150" aria-hidden="true">
+              <rect class="drop-frame" x="22" y="18" width="196" height="114" rx="8"
+                    fill="none" stroke="#5e6878" stroke-width="1.2"
+                    stroke-dasharray="6 6"/>
+              <g class="upload-arrow" transform="translate(120 78)">
+                <path d="M-16 4 L0 -14 L16 4" stroke="#f0c84a" stroke-width="2.2"
+                      fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+                <line x1="0" y1="-14" x2="0" y2="20" stroke="#f0c84a" stroke-width="2.2"
+                      stroke-linecap="round"/>
+              </g>
+              <line x1="48" y1="116" x2="192" y2="116" stroke="#f0c84a"
+                    stroke-width="1" stroke-linecap="round" opacity="0.45"/>
+              <g opacity="0.55">
+                <circle cx="60" cy="40" r="2" fill="#7ab7d0"/>
+                <circle cx="180" cy="50" r="2.5" fill="#f0c84a"/>
+                <circle cx="190" cy="100" r="2" fill="#7ab7d0"/>
+                <circle cx="50" cy="92" r="2.5" fill="#f0c84a"/>
+              </g>
+            </svg>
+          </div>
+        </article>
+
+        <div class="step-link" aria-hidden="true">
+          <svg viewBox="0 0 32 10" fill="none">
+            <path d="M0 5 L24 5 M20 1 L28 5 L20 9" stroke="currentColor"
+                  stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-        </li>
-        <li class="step">
-          <div class="step-num">02</div>
+        </div>
+
+        <article class="step">
+          <header class="step-header">
+            <span class="step-num">02</span>
+            <span class="step-tag">ПРОЦЕСС</span>
+          </header>
           <div class="step-body">
             <h3>Нажмите «Анализ»</h3>
             <p>Под капотом — Cellpose. Готовые модели находят все колонии без настройки параметров. Каждой присваивается ID, площадь, диаметр, эксцентриситет.</p>
           </div>
-          <svg class="step-art" viewBox="0 0 220 140" aria-hidden="true">
-            <circle cx="110" cy="70" r="48" fill="none" stroke="#3a4358" stroke-width="1.2"/>
-            <circle cx="110" cy="70" r="48" fill="none" stroke="url(#scan-ru)" stroke-width="2" stroke-dasharray="60 240" stroke-linecap="round"/>
-            <circle cx="94" cy="58" r="6" fill="#f0c84a" opacity="0.85"/>
-            <circle cx="124" cy="56" r="4" fill="#7ab7d0" opacity="0.85"/>
-            <circle cx="116" cy="84" r="7" fill="#f0c84a" opacity="0.7"/>
-            <circle cx="90" cy="86" r="5" fill="#7ab7d0" opacity="0.7"/>
-            <circle cx="130" cy="88" r="4" fill="#d2e2ff" opacity="0.85"/>
-            <circle cx="104" cy="70" r="3" fill="#f0c84a" opacity="0.9"/>
-            <defs>
-              <linearGradient id="scan-ru" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0" stop-color="#f0c84a"/>
-                <stop offset="1" stop-color="#7ab7d0"/>
-              </linearGradient>
-            </defs>
+          <dl class="step-spec">
+            <div><dt>Движок</dt><dd>cellpose-cyto3</dd></div>
+            <div><dt>Вычисления</dt><dd>CUDA · CPU · MPS</dd></div>
+            <div><dt>Время</dt><dd>~1,2 с / 1K²</dd></div>
+          </dl>
+          <div class="step-art">
+            <svg viewBox="0 0 240 150" aria-hidden="true">
+              <defs>
+                <linearGradient id="scanGradRu" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stop-color="#f0c84a"/>
+                  <stop offset="1" stop-color="#7ab7d0"/>
+                </linearGradient>
+              </defs>
+              <circle cx="120" cy="75" r="60" fill="none" stroke="#3a4358" stroke-width="1.2"/>
+              <g class="scan-ring" transform-origin="120 75">
+                <circle cx="120" cy="75" r="60" fill="none" stroke="url(#scanGradRu)"
+                        stroke-width="2.2" stroke-dasharray="55 320" stroke-linecap="round"/>
+                <circle cx="120" cy="15" r="2.5" fill="#f0c84a"/>
+              </g>
+              <g class="detect-pop d1" transform-origin="98 56">
+                <circle cx="98" cy="56" r="5" fill="#f0c84a" opacity="0.9"/>
+                <circle cx="98" cy="56" r="8" fill="none" stroke="#7ab7d0" stroke-width="1.3"/>
+              </g>
+              <g class="detect-pop d2" transform-origin="142 60">
+                <circle cx="142" cy="60" r="4" fill="#d2e2ff" opacity="0.9"/>
+                <circle cx="142" cy="60" r="7" fill="none" stroke="#7ab7d0" stroke-width="1.3"/>
+              </g>
+              <g class="detect-pop d3" transform-origin="118 92">
+                <circle cx="118" cy="92" r="6" fill="#f0c84a" opacity="0.85"/>
+                <circle cx="118" cy="92" r="9.5" fill="none" stroke="#aa82dc" stroke-width="1.3"/>
+              </g>
+              <g class="detect-pop d4" transform-origin="92 96">
+                <circle cx="92" cy="96" r="4" fill="#d2e2ff" opacity="0.9"/>
+                <circle cx="92" cy="96" r="7" fill="none" stroke="#7ab7d0" stroke-width="1.3"/>
+              </g>
+              <g class="detect-pop d5" transform-origin="146 100">
+                <circle cx="146" cy="100" r="5" fill="#f0c84a" opacity="0.9"/>
+                <circle cx="146" cy="100" r="8" fill="none" stroke="#aa82dc" stroke-width="1.3"/>
+              </g>
+              <g stroke="#5e6878" stroke-width="0.8" opacity="0.5">
+                <line x1="116" y1="75" x2="124" y2="75"/>
+                <line x1="120" y1="71" x2="120" y2="79"/>
+              </g>
+            </svg>
+          </div>
+        </article>
+
+        <div class="step-link" aria-hidden="true">
+          <svg viewBox="0 0 32 10" fill="none">
+            <path d="M0 5 L24 5 M20 1 L28 5 L20 9" stroke="currentColor"
+                  stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-        </li>
-        <li class="step">
-          <div class="step-num">03</div>
+        </div>
+
+        <article class="step">
+          <header class="step-header">
+            <span class="step-num">03</span>
+            <span class="step-tag">ВЫХОД</span>
+          </header>
           <div class="step-body">
             <h3>Выгрузите отчёт</h3>
             <p>PDF на одну страницу: превью, гистограмма, таблица. CSV для Excel. JSON-манифест с SHA-256 и параметрами запуска — для воспроизводимости в публикациях.</p>
           </div>
-          <svg class="step-art" viewBox="0 0 220 140" aria-hidden="true">
-            <rect x="60" y="22" width="76" height="96" rx="3" fill="#0a0d12" stroke="#3a4358" stroke-width="1.2"/>
-            <rect x="68" y="32" width="44" height="4" rx="1" fill="#f0c84a"/>
-            <rect x="68" y="44" width="60" height="2.5" rx="1" fill="#3a4358"/>
-            <rect x="68" y="52" width="50" height="2.5" rx="1" fill="#3a4358"/>
-            <rect x="68" y="60" width="56" height="2.5" rx="1" fill="#3a4358"/>
-            <rect x="68" y="72" width="60" height="20" rx="2" fill="#161b24" stroke="#3a4358" stroke-width="0.8"/>
-            <path d="M70 88 L80 78 L88 84 L100 70 L114 74 L124 84" stroke="#7ab7d0" fill="none" stroke-width="1.5"/>
-            <rect x="68" y="98" width="60" height="2.5" rx="1" fill="#3a4358"/>
-            <rect x="68" y="105" width="40" height="2.5" rx="1" fill="#3a4358"/>
-            <g transform="translate(150 90)">
-              <circle r="20" fill="#7ab7d0" opacity="0.18"/>
-              <path d="M-7 0 L-2 5 L8 -6" stroke="#7ab7d0" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
-            </g>
-          </svg>
-        </li>
-      </ol>
+          <dl class="step-spec">
+            <div><dt>Форматы</dt><dd>PDF · CSV · JSON</dd></div>
+            <div><dt>Целостность</dt><dd>SHA-256</dd></div>
+            <div><dt>Схема</dt><dd>v1 · стабильна</dd></div>
+          </dl>
+          <div class="step-art">
+            <svg viewBox="0 0 240 150" aria-hidden="true">
+              <rect x="58" y="14" width="86" height="120" rx="4" fill="#0a0d12"
+                    stroke="#3a4358" stroke-width="1.2"/>
+              <rect x="66" y="24" width="50" height="5" rx="1" fill="#f0c84a"/>
+              <rect x="66" y="36" width="70" height="2.5" rx="1" fill="#3a4358"/>
+              <rect x="66" y="44" width="58" height="2.5" rx="1" fill="#3a4358"/>
+              <rect x="66" y="52" width="64" height="2.5" rx="1" fill="#3a4358"/>
+              <rect x="66" y="64" width="70" height="26" rx="2" fill="#161b24"
+                    stroke="#3a4358" stroke-width="0.8"/>
+              <path d="M68 84 L78 74 L86 80 L98 66 L112 70 L122 80" stroke="#7ab7d0"
+                    fill="none" stroke-width="1.4"/>
+              <rect x="66" y="96" width="64" height="2.5" rx="1" fill="#3a4358"/>
+              <rect x="66" y="103" width="48" height="2.5" rx="1" fill="#3a4358"/>
+              <rect x="66" y="110" width="56" height="2.5" rx="1" fill="#3a4358"/>
+              <rect x="66" y="117" width="40" height="2.5" rx="1" fill="#3a4358"/>
+              <g class="fmt-badge" transform="translate(168 32)">
+                <rect width="46" height="16" rx="3" fill="none" stroke="#f0c84a" stroke-width="1.2"/>
+                <text x="23" y="11" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                      font-size="8.5" fill="#f0c84a" font-weight="600">PDF</text>
+              </g>
+              <g class="fmt-badge b2" transform="translate(172 60)">
+                <rect width="46" height="16" rx="3" fill="none" stroke="#7ab7d0" stroke-width="1.2"/>
+                <text x="23" y="11" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                      font-size="8.5" fill="#7ab7d0" font-weight="600">CSV</text>
+              </g>
+              <g class="fmt-badge b3" transform="translate(168 88)">
+                <rect width="46" height="16" rx="3" fill="none" stroke="#d2e2ff" stroke-width="1.2"/>
+                <text x="23" y="11" text-anchor="middle" font-family="JetBrains Mono, monospace"
+                      font-size="8.5" fill="#d2e2ff" font-weight="600">JSON</text>
+              </g>
+              <path d="M148 40 L166 40" stroke="#f0c84a" stroke-width="0.8"
+                    stroke-dasharray="2 2" opacity="0.5"/>
+              <path d="M148 68 L170 68" stroke="#7ab7d0" stroke-width="0.8"
+                    stroke-dasharray="2 2" opacity="0.5"/>
+              <path d="M148 96 L166 96" stroke="#d2e2ff" stroke-width="0.8"
+                    stroke-dasharray="2 2" opacity="0.5"/>
+            </svg>
+          </div>
+        </article>
+
+      </div>
     </div>
   </section>
 
