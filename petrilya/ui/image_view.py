@@ -27,11 +27,28 @@ from PySide6.QtWidgets import (
 )
 
 
-def _numpy_to_qpixmap_gray(arr: np.ndarray) -> QPixmap:
-    arr = np.ascontiguousarray(arr.astype(np.uint8, copy=False))
-    h, w = arr.shape
-    qimg = QImage(arr.tobytes(), w, h, w, QImage.Format.Format_Grayscale8)
+def _numpy_to_qpixmap(arr: np.ndarray) -> QPixmap:
+    """Convert a 2D grayscale or 3D RGB(A) numpy array to a QPixmap."""
+    if arr.ndim == 2:
+        arr = np.ascontiguousarray(arr.astype(np.uint8, copy=False))
+        h, w = arr.shape
+        qimg = QImage(arr.tobytes(), w, h, w, QImage.Format.Format_Grayscale8)
+    elif arr.ndim == 3:
+        arr = np.ascontiguousarray(arr.astype(np.uint8, copy=False))
+        h, w, c = arr.shape
+        if c == 3:
+            qimg = QImage(arr.tobytes(), w, h, 3 * w, QImage.Format.Format_RGB888)
+        elif c == 4:
+            qimg = QImage(arr.tobytes(), w, h, 4 * w, QImage.Format.Format_RGBA8888)
+        else:
+            raise ValueError(f"Unsupported channel count: {c}")
+    else:
+        raise ValueError(f"Unsupported image ndim: {arr.ndim}")
     return QPixmap.fromImage(qimg.copy())
+
+
+# Back-compat alias for any external caller
+_numpy_to_qpixmap_gray = _numpy_to_qpixmap
 
 
 def _masks_to_overlay_pixmap(masks: np.ndarray, alpha: int = 110) -> QPixmap:
@@ -91,7 +108,7 @@ class ImageCanvas(QGraphicsView):
     def set_image(self, image: np.ndarray) -> None:
         self._scene.clear()
         self._placeholder = None
-        self._base_item = QGraphicsPixmapItem(_numpy_to_qpixmap_gray(image))
+        self._base_item = QGraphicsPixmapItem(_numpy_to_qpixmap(image))
         self._scene.addItem(self._base_item)
         self._overlay_item = None
         self._masks = None

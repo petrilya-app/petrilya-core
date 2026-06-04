@@ -223,8 +223,10 @@ class ClassicalEngine(Engine):
         from skimage import filters, morphology, segmentation
         from skimage.feature import peak_local_max
 
-        if image.ndim != 2:
-            image = np.mean(image, axis=-1).astype(np.uint8)
+        # Smart RGB→grayscale that preserves YELLOW/ORANGE/RED colonies on
+        # cream agar by combining luminance with chroma. For grayscale
+        # input this is a no-op.
+        image = _to_intensity(image, mode="auto")
         original_shape = image.shape
 
         roi = _find_dish_roi(image)
@@ -370,6 +372,52 @@ def _percentile_normalize(img: np.ndarray, lo: float = 1.0, hi: float = 99.0) ->
     return np.clip(out, 0.0, 1.0).astype(np.float32)
 
 
+def _to_intensity(image: np.ndarray, mode: str = "auto") -> np.ndarray:
+    """Convert a 2D/RGB(A) image to a single-channel ``uint8`` intensity map
+    that maximises colony contrast.
+
+    Standard luminance (0.299 R + 0.587 G + 0.114 B) loses YELLOW colonies
+    on a CREAM agar — both have similar luminance, the difference is almost
+    entirely in the blue channel. We get a much better signal by combining
+    the L channel with the magnitude of the LAB chroma, so any saturated
+    colour (yellow, orange, red, pink) stands out from the near-neutral
+    agar regardless of its luminance.
+
+    ``mode``:
+      ``"auto"``       — L + |chroma| (default; recommended for classical)
+      ``"luminance"``  — plain rec.709-ish luminance (use for cellpose
+                          since it was trained on it)
+    """
+    if image.ndim == 2:
+        return image.astype(np.uint8, copy=False)
+
+    if image.ndim == 3 and image.shape[-1] >= 3:
+        rgb = image[..., :3].astype(np.float32)
+        # rec.709 luminance
+        Y = 0.2126 * rgb[..., 0] + 0.7152 * rgb[..., 1] + 0.0722 * rgb[..., 2]
+
+        if mode == "luminance":
+            return np.clip(Y, 0, 255).astype(np.uint8)
+
+        # Cheap chroma estimate without doing a full LAB conversion:
+        # max(R,G,B) - min(R,G,B) is the HSV saturation×value product,
+        # which lights up exactly when the colour is saturated.
+        mx = rgb.max(axis=-1)
+        mn = rgb.min(axis=-1)
+        chroma = mx - mn
+
+        # Blend luminance with chroma. Weights chosen so that:
+        #  - neutral cream agar (L≈230, chroma≈30) gives ≈230
+        #  - bright yellow colony (L≈210, chroma≈160) gives ≈210 + 96 = 306 → 255
+        #  - dark text on agar (L≈70,  chroma≈10)  gives ≈70
+        # So saturated colonies pop UP whether they're lighter or darker
+        # than agar in luminance.
+        out = Y + 0.6 * chroma
+        return np.clip(out, 0, 255).astype(np.uint8)
+
+    raise ValueError(f"Unsupported image shape: {image.shape}")
+
+
 @register("cellpose-onnx")
 class CellposeOnnxEngine(Engine):
     """Cellpose cyto3 weights via ONNX Runtime + cellpose.dynamics."""
@@ -419,8 +467,8 @@ class CellposeOnnxEngine(Engine):
     def segment(self, image, diameter=None):
         from skimage.transform import resize
 
-        if image.ndim != 2:
-            image = np.mean(image, axis=-1).astype(np.uint8)
+        # Cellpose was trained on luminance — use plain Y for fidelity.
+        image = _to_intensity(image, mode="luminance")
         original_shape = image.shape
 
         # Crop to dish to feed only the agar region to the net.
@@ -524,6 +572,7 @@ class CellposeEngine(Engine):
         self.model = models.Cellpose(gpu=use_gpu, model_type=model_type)
 
     def segment(self, image, diameter=None):
+        image = _to_intensity(image, mode="luminance")
         masks, _flows, _styles, diams = self.model.eval(
             image, diameter=diameter, channels=[0, 0]
         )

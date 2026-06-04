@@ -326,7 +326,15 @@ class MainWindow(QMainWindow):
         try:
             from PIL import Image
 
-            arr = np.array(Image.open(path).convert("L"))
+            img = Image.open(path)
+            # Display in colour; the engine workers do their own grayscale
+            # conversion from the file path so we don't lose information here.
+            if img.mode in ("RGB", "RGBA"):
+                arr = np.array(img)
+            elif img.mode == "L":
+                arr = np.array(img)
+            else:
+                arr = np.array(img.convert("RGB"))
         except Exception as e:  # noqa: BLE001
             QMessageBox.critical(self, "Open failed", str(e))
             return
@@ -335,8 +343,9 @@ class MainWindow(QMainWindow):
         self.current_image = arr
         self.current_metrics = []
         self.canvas.set_image(arr)
+        h, w = arr.shape[:2]
         self.summary_label.setText(
-            f"Loaded: {path.name}  ({arr.shape[1]}x{arr.shape[0]})"
+            f"Loaded: {path.name}  ({w}x{h})"
         )
         self.table.setRowCount(0)
         self.analyze_btn.setEnabled(True)

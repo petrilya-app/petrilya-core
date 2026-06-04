@@ -74,20 +74,24 @@ class AnalysisWorker(QRunnable):
         try:
             self.signals.started.emit()
             self.signals.progress.emit(f"Loading {self.image_path.name}...")
-            image = np.array(Image.open(self.image_path).convert("L"))
+            pil_img = Image.open(self.image_path)
+            display_image = np.array(
+                pil_img if pil_img.mode in ("RGB", "RGBA", "L") else pil_img.convert("RGB")
+            )
 
             self.signals.progress.emit(
                 f"Segmenting ({self.engine_id}, {'GPU' if self.use_gpu else 'CPU'})..."
             )
+            # Engines decide their own preprocessing. Pass colour if available.
             masks, elapsed, engine_name, params = run_segmentation(
-                image, self.engine_id, self.use_gpu
+                display_image, self.engine_id, self.use_gpu
             )
 
             self.signals.progress.emit("Computing metrics...")
             metrics = compute_colony_metrics(masks, scale_um_per_px=self.scale_um_per_px)
 
             self.signals.finished.emit(
-                image, masks, metrics, elapsed, engine_name, params
+                display_image, masks, metrics, elapsed, engine_name, params
             )
         except Exception as e:  # noqa: BLE001
             self.signals.error.emit(f"{type(e).__name__}: {e}\n{traceback.format_exc()}")
@@ -143,7 +147,11 @@ class BatchWorker(QRunnable):
             for i, img_path in enumerate(images, start=1):
                 self.signals.progress.emit(i, len(images), img_path.name)
                 try:
-                    image = np.array(Image.open(img_path).convert("L"))
+                    pil_img = Image.open(img_path)
+                    image = np.array(
+                        pil_img if pil_img.mode in ("RGB", "RGBA", "L")
+                        else pil_img.convert("RGB")
+                    )
                     masks, elapsed, engine_name, params = run_segmentation(
                         image, self.engine_id, self.use_gpu
                     )
