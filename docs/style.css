@@ -598,6 +598,24 @@ html.light .dish-stage {
 .how, .features, .download, .for-labs {
   padding: 120px 0;
   position: relative;
+  overflow: hidden;
+}
+
+/* Soft fade hairline separator between sections — same treatment as
+ * .hero::after. Replaces the flat 1px solid border-top each section
+ * used to carry. */
+.how::before,
+.features::before,
+.download::before,
+.for-labs::before,
+.footer::before {
+  content: "";
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--border), transparent);
+  z-index: 2;
+  pointer-events: none;
 }
 
 .how h2,
@@ -621,7 +639,18 @@ html.light .dish-stage {
 }
 
 /* =================== How it works =================== */
-.how { background: var(--bg-soft); border-top: 1px solid var(--border); }
+.how {
+  background:
+    radial-gradient(ellipse 65% 45% at 10% -5%, rgba(240, 200, 74, 0.07), transparent 70%),
+    radial-gradient(ellipse 55% 40% at 95% 100%, rgba(122, 183, 208, 0.10), transparent 75%),
+    var(--bg-soft);
+}
+html.light .how {
+  background:
+    radial-gradient(ellipse 65% 45% at 10% -5%, rgba(184, 132, 42, 0.05), transparent 70%),
+    radial-gradient(ellipse 55% 40% at 95% 100%, rgba(47, 106, 134, 0.06), transparent 75%),
+    var(--bg-soft);
+}
 
 .steps {
   list-style: none;
@@ -835,7 +864,16 @@ html.light .step:hover {
 }
 
 /* =================== Features (bento grid) =================== */
-.features { background: var(--bg); border-top: 1px solid var(--border); }
+.features {
+  background:
+    radial-gradient(ellipse 60% 45% at 85% -5%, rgba(170, 130, 220, 0.07), transparent 70%),
+    radial-gradient(ellipse 50% 35% at 5% 105%, rgba(122, 183, 208, 0.06), transparent 75%);
+}
+html.light .features {
+  background:
+    radial-gradient(ellipse 60% 45% at 85% -5%, rgba(110, 80, 160, 0.05), transparent 70%),
+    radial-gradient(ellipse 50% 35% at 5% 105%, rgba(47, 106, 134, 0.05), transparent 75%);
+}
 .features h2 { margin-bottom: 18px; }
 
 .grid {
@@ -992,7 +1030,18 @@ html.light .feat-icon-wrap::after { background: rgba(255, 255, 255, 0.5); }
 .card.span-2 p { max-width: 44ch; }
 
 /* =================== Download =================== */
-.download { background: var(--bg-soft); border-top: 1px solid var(--border); }
+.download {
+  background:
+    radial-gradient(ellipse 55% 40% at 5% 0%, rgba(240, 200, 74, 0.09), transparent 72%),
+    radial-gradient(ellipse 50% 40% at 100% 105%, rgba(122, 183, 208, 0.08), transparent 75%),
+    var(--bg-soft);
+}
+html.light .download {
+  background:
+    radial-gradient(ellipse 55% 40% at 5% 0%, rgba(184, 132, 42, 0.06), transparent 72%),
+    radial-gradient(ellipse 50% 40% at 100% 105%, rgba(47, 106, 134, 0.06), transparent 75%),
+    var(--bg-soft);
+}
 .download .lead { font-size: 17px; margin-bottom: 32px; }
 
 .code {
@@ -1020,15 +1069,32 @@ html.light .feat-icon-wrap::after { background: rgba(255, 255, 255, 0.5); }
 }
 
 /* =================== For labs =================== */
-.for-labs { background: var(--bg); border-top: 1px solid var(--border); }
+.for-labs {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% -5%, rgba(122, 183, 208, 0.09), transparent 70%),
+    radial-gradient(ellipse 45% 35% at 90% 100%, rgba(240, 200, 74, 0.05), transparent 75%);
+}
+html.light .for-labs {
+  background:
+    radial-gradient(ellipse 60% 45% at 50% -5%, rgba(47, 106, 134, 0.06), transparent 70%),
+    radial-gradient(ellipse 45% 35% at 90% 100%, rgba(184, 132, 42, 0.04), transparent 75%);
+}
 .for-labs p { max-width: 740px; color: var(--text-dim); font-size: 16.5px; line-height: 1.7; }
 .for-labs a { color: var(--accent-2); font-weight: 500; }
 
 /* =================== Footer =================== */
 .footer {
-  border-top: 1px solid var(--border);
+  position: relative;
   padding: 50px 0 60px;
-  background: var(--bg);
+  background:
+    radial-gradient(ellipse 70% 80% at 50% -20%, rgba(122, 183, 208, 0.06), transparent 70%),
+    var(--bg);
+  overflow: hidden;
+}
+html.light .footer {
+  background:
+    radial-gradient(ellipse 70% 80% at 50% -20%, rgba(47, 106, 134, 0.04), transparent 70%),
+    var(--bg);
 }
 .footer-row {
   display: flex;
