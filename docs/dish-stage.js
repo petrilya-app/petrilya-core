@@ -28,19 +28,22 @@
 
   function place(stage) {
     const seed     = parseInt(stage.dataset.seed     || "42",  10);
-    const count    = parseInt(stage.dataset.count    || "55",  10);
+    const count    = parseInt(stage.dataset.count    || "40",  10);
     const yellowMix= parseFloat(stage.dataset.yellow || "0.6");
     const base     = stage.dataset.assetBase || "";
     const random   = rng(seed);
 
-    // placement radius (fraction of stage half-width — agar is ~88% of dish)
-    const R = 0.42;
-    // colony size distribution
-    const SIZE_SMALL  = [0.045, 0.075];  // 4.5%-7.5% of stage width
-    const SIZE_MED    = [0.075, 0.11];
-    const SIZE_LARGE  = [0.11,  0.16];
+    // Placement radius — fraction of stage half-width. The agar disc in
+    // agar.png occupies ~72% of the PNG canvas (the rest is plastic rim
+    // and transparent padding), so we use 0.30 here to keep every colony
+    // comfortably INSIDE the cream agar area rather than crowding the rim.
+    const R = 0.30;
+    // colony size distribution — also slightly tighter since stage is smaller
+    const SIZE_SMALL  = [0.035, 0.060];  // 3.5%-6% of stage width
+    const SIZE_MED    = [0.060, 0.085];
+    const SIZE_LARGE  = [0.085, 0.115];
     // min separation as fraction of (sizeA + sizeB)
-    const MIN_GAP     = 0.55;
+    const MIN_GAP     = 0.60;
 
     const placed = [];
     let attempts = 0;
