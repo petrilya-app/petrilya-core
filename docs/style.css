@@ -677,13 +677,14 @@ html.light .step:hover {
   display: block;
 }
 
-/* === Step illustration animations (CSS-driven where possible) === */
-.scan-ring {
-  transform-box: fill-box;
-  transform-origin: center;
-  animation: scan-rotate 4.5s linear infinite;
-}
-@keyframes scan-rotate { to { transform: rotate(360deg); } }
+/* === Step illustration animations =========================
+ * IMPORTANT: every animated element is wrapped in an outer
+ * <g transform="translate(x y)"> for POSITION, and the CSS
+ * animation lives on an INNER <g> that has no transform of
+ * its own. This prevents the CSS animation's transform from
+ * stomping the SVG transform attribute that holds the position.
+ * The rotating scan ring uses SMIL <animateTransform> because
+ * SMIL supports an explicit rotation centre. ============= */
 
 .drop-frame {
   animation: dash-march 3s linear infinite;
@@ -691,45 +692,41 @@ html.light .step:hover {
 @keyframes dash-march { to { stroke-dashoffset: -24; } }
 
 .upload-arrow {
-  transform-box: fill-box;
-  transform-origin: center;
   animation: arrow-bob 2.4s ease-in-out infinite;
 }
 @keyframes arrow-bob {
   0%, 100% { transform: translateY(0); }
-  50%      { transform: translateY(-5px); }
+  50%      { transform: translateY(-6px); }
 }
 
-.detect-pop { opacity: 0; transform-box: fill-box; transform-origin: center; }
-.detect-pop.d1 { animation: detect-in 4.5s ease-in-out 0.0s infinite; }
-.detect-pop.d2 { animation: detect-in 4.5s ease-in-out 0.6s infinite; }
-.detect-pop.d3 { animation: detect-in 4.5s ease-in-out 1.2s infinite; }
-.detect-pop.d4 { animation: detect-in 4.5s ease-in-out 1.8s infinite; }
-.detect-pop.d5 { animation: detect-in 4.5s ease-in-out 2.4s infinite; }
+.detect-pop { opacity: 0; }
+.detect-pop.d1 { animation: detect-in 5s ease-in-out 0.0s infinite; }
+.detect-pop.d2 { animation: detect-in 5s ease-in-out 0.6s infinite; }
+.detect-pop.d3 { animation: detect-in 5s ease-in-out 1.2s infinite; }
+.detect-pop.d4 { animation: detect-in 5s ease-in-out 1.8s infinite; }
+.detect-pop.d5 { animation: detect-in 5s ease-in-out 2.4s infinite; }
 @keyframes detect-in {
-  0%   { opacity: 0; transform: scale(0.4); }
-  18%  { opacity: 1; transform: scale(1.08); }
-  28%  { opacity: 1; transform: scale(1); }
-  70%  { opacity: 1; }
-  85%  { opacity: 0; transform: scale(1); }
-  100% { opacity: 0; }
+  0%   { opacity: 0; transform: scale(0.35); }
+  10%  { opacity: 1; transform: scale(1.15); }
+  18%  { opacity: 1; transform: scale(1); }
+  72%  { opacity: 1; transform: scale(1); }
+  88%  { opacity: 0; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.95); }
 }
 
 .fmt-badge {
-  transform-box: fill-box;
-  transform-origin: center;
   animation: fmt-float 3s ease-in-out infinite;
 }
-.fmt-badge.b2 { animation-delay: 0.5s; }
-.fmt-badge.b3 { animation-delay: 1.0s; }
+.fmt-badge.b2 { animation-delay: 0.6s; }
+.fmt-badge.b3 { animation-delay: 1.2s; }
 @keyframes fmt-float {
-  0%, 100% { transform: translateY(0); opacity: 0.9; }
-  50%      { transform: translateY(-4px); opacity: 1; }
+  0%, 100% { transform: translateY(0); opacity: 0.95; }
+  50%      { transform: translateY(-5px); opacity: 1; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scan-ring, .drop-frame, .upload-arrow,
-  .detect-pop, .fmt-badge, .step-link::after {
+  .drop-frame, .upload-arrow, .detect-pop, .fmt-badge,
+  .step-link::after {
     animation: none !important;
   }
   .detect-pop { opacity: 1; }
