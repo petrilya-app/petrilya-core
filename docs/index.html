@@ -352,96 +352,161 @@
       <span class="eyebrow">CAPABILITIES</span>
       <h2>What it does</h2>
       <div class="grid">
-        <div class="card">
-          <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-            <polyline points="17 8 12 3 7 8"/>
-            <line x1="12" y1="3" x2="12" y2="15"/>
+        <!-- ROW 1: [AI featured x2] [Drag] [Manual] -->
+        <article class="card span-2 accent-amber">
+          <svg class="card-decor" viewBox="0 0 200 200" width="220" height="220"
+               style="right: -50px; bottom: -50px;" aria-hidden="true">
+            <circle cx="100" cy="100" r="80" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.5"/>
+            <circle cx="100" cy="100" r="56" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.7"/>
+            <circle cx="100" cy="100" r="34" fill="none" stroke="currentColor" stroke-width="0.6" opacity="0.85"/>
+            <circle cx="100" cy="100" r="14" fill="currentColor" opacity="0.7"/>
+            <circle cx="80" cy="90" r="3" fill="currentColor"/>
+            <circle cx="118" cy="86" r="2" fill="currentColor"/>
+            <circle cx="112" cy="118" r="2.5" fill="currentColor"/>
           </svg>
-          <h3>Drag &amp; drop</h3>
-          <p>Drop a JPG, PNG, or TIFF straight from your phone or microscope. Batch a whole folder when you have a hundred dishes.</p>
-        </div>
-        <div class="card">
-          <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="12" cy="12" r="8"/>
-            <circle cx="9" cy="10" r="1.2" fill="currentColor"/>
-            <circle cx="15" cy="9" r="0.9" fill="currentColor"/>
-            <circle cx="14" cy="14" r="1.4" fill="currentColor"/>
-            <circle cx="9.5" cy="15" r="1" fill="currentColor"/>
-            <path d="M19.5 4.5L17 7M4.5 19.5L7 17"/>
-          </svg>
+          <div class="feat-icon-wrap">
+            <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="12" cy="12" r="8"/>
+              <circle cx="9" cy="10" r="1.2" fill="currentColor"/>
+              <circle cx="15" cy="9" r="0.9" fill="currentColor"/>
+              <circle cx="14" cy="14" r="1.4" fill="currentColor"/>
+              <circle cx="9.5" cy="15" r="1" fill="currentColor"/>
+              <path d="M19.5 4.5L17 7M4.5 19.5L7 17"/>
+            </svg>
+          </div>
           <h3>AI segmentation</h3>
-          <p>Powered by Cellpose under the hood. Pretrained models recognise colonies of different shapes without any setup.</p>
-        </div>
-        <div class="card">
-          <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M14.06 9l.94.94L5.92 19H5v-.92L14.06 9z"/>
-            <path d="M15 4.94L19.06 9 21 7.06 16.94 3 15 4.94z" fill="currentColor" fill-opacity="0.15"/>
-            <path d="M15 4.94L19.06 9"/>
-            <path d="M3 21h18"/>
-          </svg>
-          <h3>Fix what AI got wrong</h3>
-          <p>Erase a misdetected colony with a click. Paint in one the model missed with the brush tool. Metrics recalculate instantly.</p>
-        </div>
-        <div class="card">
-          <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <circle cx="11" cy="11" r="7"/>
-            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
-            <line x1="8" y1="11" x2="14" y2="11"/>
-            <line x1="11" y1="8" x2="11" y2="14"/>
-          </svg>
+          <p>Powered by Cellpose under the hood. Pretrained models recognise colonies of different shapes and sizes without any setup or parameter tuning.</p>
+        </article>
+
+        <article class="card accent-teal">
+          <div class="feat-icon-wrap">
+            <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+          </div>
+          <h3>Drag &amp; drop</h3>
+          <p>Drop a JPG, PNG, or TIFF straight from your phone or microscope.</p>
+        </article>
+
+        <article class="card accent-purple">
+          <div class="feat-icon-wrap">
+            <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14.06 9l.94.94L5.92 19H5v-.92L14.06 9z"/>
+              <path d="M15 4.94L19.06 9 21 7.06 16.94 3 15 4.94z" fill="currentColor" fill-opacity="0.15"/>
+              <path d="M15 4.94L19.06 9"/>
+              <path d="M3 21h18"/>
+            </svg>
+          </div>
+          <h3>Manual fixes</h3>
+          <p>Erase misdetections with a click, paint missed colonies with a brush.</p>
+        </article>
+
+        <!-- ROW 2: [Zoom] [Real units featured x2] [Reports] -->
+        <article class="card accent-amber">
+          <div class="feat-icon-wrap">
+            <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <circle cx="11" cy="11" r="7"/>
+              <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+              <line x1="8" y1="11" x2="14" y2="11"/>
+              <line x1="11" y1="8" x2="11" y2="14"/>
+            </svg>
+          </div>
           <h3>Zoom &amp; pan</h3>
-          <p>Wheel-zoom into any part of the dish, Space-drag to pan. Inspect small details, then fit-to-window with F.</p>
-        </div>
-        <div class="card">
-          <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M21.3 8.3L15.7 2.7a1 1 0 0 0-1.4 0L2.7 14.3a1 1 0 0 0 0 1.4l5.6 5.6a1 1 0 0 0 1.4 0L21.3 9.7a1 1 0 0 0 0-1.4z"/>
-            <line x1="7" y1="17" x2="9" y2="15"/>
-            <line x1="10" y1="14" x2="12" y2="12"/>
-            <line x1="13" y1="11" x2="15" y2="9"/>
-            <line x1="16" y1="8" x2="18" y2="6"/>
+          <p>Wheel-zoom anywhere, Space-drag to pan, F to fit.</p>
+        </article>
+
+        <article class="card span-2 accent-teal">
+          <svg class="card-decor" viewBox="0 0 240 200" width="280" height="220"
+               style="right: -40px; bottom: -30px;" aria-hidden="true">
+            <g stroke="currentColor" stroke-width="0.6" fill="none">
+              <line x1="0" y1="50"  x2="240" y2="50"  opacity="0.4"/>
+              <line x1="0" y1="100" x2="240" y2="100" opacity="0.55"/>
+              <line x1="0" y1="150" x2="240" y2="150" opacity="0.4"/>
+              <line x1="60"  y1="0" x2="60"  y2="200" opacity="0.4"/>
+              <line x1="120" y1="0" x2="120" y2="200" opacity="0.55"/>
+              <line x1="180" y1="0" x2="180" y2="200" opacity="0.4"/>
+            </g>
+            <g stroke="currentColor" stroke-width="1" fill="none" opacity="0.7">
+              <line x1="60" y1="100" x2="180" y2="100"/>
+              <line x1="60" y1="94"  x2="60"  y2="106"/>
+              <line x1="180" y1="94" x2="180" y2="106"/>
+              <line x1="120" y1="97" x2="120" y2="103"/>
+            </g>
           </svg>
-          <h3>Real units</h3>
-          <p>Set micrometers-per-pixel and your areas come out in &micro;m&sup2; and diameters in &micro;m — ready for the methods section.</p>
-        </div>
-        <div class="card">
-          <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-            <polyline points="14 2 14 8 20 8"/>
-            <line x1="8" y1="13" x2="8" y2="17"/>
-            <line x1="12" y1="11" x2="12" y2="17"/>
-            <line x1="16" y1="15" x2="16" y2="17"/>
+          <div class="feat-icon-wrap">
+            <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M21.3 8.3L15.7 2.7a1 1 0 0 0-1.4 0L2.7 14.3a1 1 0 0 0 0 1.4l5.6 5.6a1 1 0 0 0 1.4 0L21.3 9.7a1 1 0 0 0 0-1.4z"/>
+              <line x1="7" y1="17" x2="9" y2="15"/>
+              <line x1="10" y1="14" x2="12" y2="12"/>
+              <line x1="13" y1="11" x2="15" y2="9"/>
+              <line x1="16" y1="8" x2="18" y2="6"/>
+            </svg>
+          </div>
+          <h3>Real units, not pixels</h3>
+          <p>Set micrometers-per-pixel and your areas come out in &micro;m&sup2;, diameters in &micro;m — drop them straight into your methods section.</p>
+        </article>
+
+        <article class="card accent-purple">
+          <div class="feat-icon-wrap">
+            <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="8" y1="13" x2="8" y2="17"/>
+              <line x1="12" y1="11" x2="12" y2="17"/>
+              <line x1="16" y1="15" x2="16" y2="17"/>
+            </svg>
+          </div>
+          <h3>Publication exports</h3>
+          <p>One-page PDF with preview, histogram, table. CSV. JSON manifest.</p>
+        </article>
+
+        <!-- ROW 3: [Batch featured x2] [Laptop] [Yours, locally] -->
+        <article class="card span-2 accent-amber">
+          <svg class="card-decor" viewBox="0 0 200 200" width="220" height="220"
+               style="right: -40px; bottom: -50px;" aria-hidden="true">
+            <g fill="none" stroke="currentColor" stroke-width="0.7" opacity="0.85">
+              <rect x="30" y="30" width="120" height="120" rx="8"/>
+              <rect x="42" y="42" width="120" height="120" rx="8" opacity="0.75"/>
+              <rect x="54" y="54" width="120" height="120" rx="8" opacity="0.6"/>
+              <rect x="66" y="66" width="120" height="120" rx="8" opacity="0.45"/>
+            </g>
           </svg>
-          <h3>Publication-ready exports</h3>
-          <p>One-page PDF report with preview, histogram and table. CSV for spreadsheets. JSON manifest with SHA-256 for reproducibility.</p>
-        </div>
-        <div class="card">
-          <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <rect x="2" y="4" width="20" height="14" rx="2"/>
-            <line x1="2" y1="18" x2="22" y2="18"/>
-            <line x1="9" y1="22" x2="15" y2="22"/>
-            <line x1="12" y1="18" x2="12" y2="22"/>
-          </svg>
-          <h3>Works on your laptop</h3>
-          <p>Windows, macOS, Linux. CUDA when you have it, plain CPU when you don't. Your data never leaves the machine.</p>
-        </div>
-        <div class="card">
-          <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <polygon points="12 2 22 8.5 12 15 2 8.5 12 2"/>
-            <polyline points="2 15.5 12 22 22 15.5"/>
-            <polyline points="2 12 12 18.5 22 12" opacity="0.5"/>
-          </svg>
-          <h3>Batch mode</h3>
-          <p>Point at a folder, get a CSV, PDF and JSON per image plus a summary.csv aggregating the run. Walk away while it works.</p>
-        </div>
-        <div class="card">
-          <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-            <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
-            <path d="M9 12l2 2 4-4"/>
-          </svg>
+          <div class="feat-icon-wrap">
+            <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <polygon points="12 2 22 8.5 12 15 2 8.5 12 2"/>
+              <polyline points="2 15.5 12 22 22 15.5"/>
+              <polyline points="2 12 12 18.5 22 12" opacity="0.5"/>
+            </svg>
+          </div>
+          <h3>Batch a whole folder</h3>
+          <p>Point at a folder, get a CSV, PDF and JSON per image plus a sweeping summary.csv. Walk away while it works.</p>
+        </article>
+
+        <article class="card accent-teal">
+          <div class="feat-icon-wrap">
+            <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <rect x="2" y="4" width="20" height="14" rx="2"/>
+              <line x1="2" y1="18" x2="22" y2="18"/>
+              <line x1="9" y1="22" x2="15" y2="22"/>
+              <line x1="12" y1="18" x2="12" y2="22"/>
+            </svg>
+          </div>
+          <h3>Runs on your laptop</h3>
+          <p>Windows, macOS, Linux. CUDA when you have it, CPU when you don't.</p>
+        </article>
+
+        <article class="card accent-purple">
+          <div class="feat-icon-wrap">
+            <svg class="feat-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+              <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+              <path d="M9 12l2 2 4-4"/>
+            </svg>
+          </div>
           <h3>Yours, locally</h3>
-          <p>No telemetry, no accounts, no upload. Sensitive patient samples and pharma data stay on the workstation.</p>
-        </div>
+          <p>No telemetry, no accounts, no upload. Samples never leave the box.</p>
+        </article>
       </div>
     </div>
   </section>
