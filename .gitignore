@@ -244,3 +244,6 @@ build/
 # IDE
 .idea/
 .vscode/
+
+# Local AI assistant config (Claude Code skills installed via uipro-cli, etc.)
+.claude/
