@@ -10,6 +10,7 @@ from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
     QButtonGroup,
     QCheckBox,
+    QComboBox,
     QDoubleSpinBox,
     QFileDialog,
     QFormLayout,
@@ -127,6 +128,18 @@ class MainWindow(QMainWindow):
         settings_box = QGroupBox("Analysis")
         form = QFormLayout(settings_box)
 
+        self.engine_combo = QComboBox()
+        self.engine_combo.addItem("Classical (Otsu + watershed)", userData="classical")
+        self.engine_combo.addItem("Cellpose ONNX (cyto3)",        userData="cellpose-onnx")
+        self.engine_combo.addItem("Cellpose (PyTorch, needs weights)", userData="cellpose")
+        self.engine_combo.addItem("Mock (UI development)",        userData="mock")
+        self.engine_combo.setToolTip(
+            "Classical is fastest and needs no model weights.\n"
+            "Cellpose ONNX uses the bundled cyto3 weights and handles\n"
+            "irregular shapes better, at a higher compute cost."
+        )
+        form.addRow("Engine:", self.engine_combo)
+
         self.scale_spin = QDoubleSpinBox()
         self.scale_spin.setRange(0.0, 1000.0)
         self.scale_spin.setDecimals(4)
@@ -136,7 +149,7 @@ class MainWindow(QMainWindow):
         self.scale_spin.setSpecialValueText("(pixel units)")
         form.addRow("Scale:", self.scale_spin)
 
-        self.gpu_check = QCheckBox("Use GPU (CUDA)")
+        self.gpu_check = QCheckBox("Use GPU (CUDA/MPS)")
         self.gpu_check.setChecked(False)
         form.addRow(self.gpu_check)
 
@@ -341,6 +354,7 @@ class MainWindow(QMainWindow):
 
         worker = AnalysisWorker(
             self.current_image_path,
+            engine_id=self.engine_combo.currentData() or "classical",
             use_gpu=self.gpu_check.isChecked(),
             scale_um_per_px=self._scale_value(),
         )
@@ -531,6 +545,7 @@ class MainWindow(QMainWindow):
         worker = BatchWorker(
             Path(in_dir),
             Path(out_dir),
+            engine_id=self.engine_combo.currentData() or "classical",
             use_gpu=self.gpu_check.isChecked(),
             scale_um_per_px=self._scale_value(),
         )
