@@ -98,6 +98,7 @@
       img.style.width  = (c.size * 100) + "%";
       img.style.transform = "translate(-50%, -50%) rotate(" + c.rotation + "deg)";
       img.style.animationDelay = (i * 35) + "ms";
+      img.style.zIndex = "10";
       frag.appendChild(img);
     });
     stage.appendChild(frag);
