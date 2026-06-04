@@ -188,8 +188,9 @@ class ClassicalEngine(Engine):
 
     # Work crop is downscaled so the longest edge is at most this many
     # pixels — top-hat morphology is O(N * structuring-element-area)
-    # and gets painful on 3K+ crops. Labels are upscaled back.
-    MAX_EDGE = 1400
+    # and gets painful on 3K+ crops. Labels are upscaled back via
+    # nearest-neighbour so IDs aren't blended.
+    MAX_EDGE = 900
 
     def __init__(
         self,
@@ -251,14 +252,21 @@ class ClassicalEngine(Engine):
         if in_dish.sum() < 100:
             return np.zeros(original_shape, np.int32), 0.0
 
-        # Structuring element radius for top-hat (in WORK crop coords)
+        # Structuring element radius for top-hat (in WORK crop coords).
+        # Must be LARGER than the biggest expected colony radius —
+        # otherwise large colonies fit inside the disk and survive the
+        # opening, so top-hat returns zero for them and the engine ends
+        # up only finding tiny artefacts like marker-pen text strokes.
         if diameter is not None and diameter > 0:
-            tophat_r = max(5, int(diameter * scale / 2.0 * 1.3))
+            tophat_r = max(8, int(diameter * scale / 2.0 * 1.5))
         elif roi is not None:
-            tophat_r = max(6, int(roi[2] * scale * 0.025))
+            # ~8% of dish radius — covers colonies up to ~16% of the dish.
+            tophat_r = max(12, int(roi[2] * scale * 0.08))
         else:
-            tophat_r = max(6, int(min(crop.shape) * 0.012))
-        tophat_r = min(tophat_r, 30)  # cap so morphology stays cheap
+            tophat_r = max(12, int(min(crop.shape) * 0.04))
+        # Cap so morphology stays affordable. With MAX_EDGE=900, disk(45)
+        # area is ~6300 px and morphology completes in seconds.
+        tophat_r = min(tophat_r, 45)
 
         img8 = crop  # already uint8
 
@@ -323,12 +331,24 @@ class ClassicalEngine(Engine):
         markers = morphology.dilation(markers, morphology.disk(1))
         labels = segmentation.watershed(-dist, markers, mask=binary)
 
-        if self.max_colony_px is not None:
-            from skimage import measure
+        # Shape filtering: keep ONLY round/convex regions. Marker text,
+        # cracks in the agar, scuff marks etc. all have high eccentricity
+        # or low solidity. Real colonies are nearly round.
+        from skimage import measure
 
-            for prop in measure.regionprops(labels):
-                if prop.area > self.max_colony_px:
-                    labels[labels == prop.label] = 0
+        for prop in measure.regionprops(labels):
+            drop = False
+            if prop.eccentricity > 0.85:
+                drop = True
+            if prop.solidity < 0.75:
+                drop = True
+            if self.max_colony_px is not None and prop.area > self.max_colony_px:
+                drop = True
+            # Reject tiny specks too — they're below what a colony can be.
+            if prop.area < self.min_colony_px:
+                drop = True
+            if drop:
+                labels[labels == prop.label] = 0
 
         labels = segmentation.relabel_sequential(labels)[0].astype(np.int32)
 
@@ -406,13 +426,12 @@ def _to_intensity(image: np.ndarray, mode: str = "auto") -> np.ndarray:
         mn = rgb.min(axis=-1)
         chroma = mx - mn
 
-        # Blend luminance with chroma. Weights chosen so that:
-        #  - neutral cream agar (L≈230, chroma≈30) gives ≈230
-        #  - bright yellow colony (L≈210, chroma≈160) gives ≈210 + 96 = 306 → 255
-        #  - dark text on agar (L≈70,  chroma≈10)  gives ≈70
-        # So saturated colonies pop UP whether they're lighter or darker
-        # than agar in luminance.
-        out = Y + 0.6 * chroma
+        # Blend luminance with a SMALL chroma boost. Earlier we used a
+        # heavy 0.6 multiplier — but colored marker text on the agar then
+        # outshines real (low-chroma) colonies. With 0.25, saturated
+        # yellow/orange colonies still gain some contrast but ink strokes
+        # don't drown out the real signal.
+        out = Y + 0.25 * chroma
         return np.clip(out, 0, 255).astype(np.uint8)
 
     raise ValueError(f"Unsupported image shape: {image.shape}")
