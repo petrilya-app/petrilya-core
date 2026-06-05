@@ -116,6 +116,7 @@ class MainWindow(QMainWindow):
         # left: canvas
         self.canvas = ImageCanvas()
         self.canvas.masks_edited.connect(self.on_masks_edited)
+        self.canvas.colony_clicked.connect(self._on_colony_clicked)
         splitter.addWidget(self.canvas)
 
         # right: controls + results
@@ -248,6 +249,11 @@ class MainWindow(QMainWindow):
             ["#", "Area", "Diameter", "Eccentricity"]
         )
         self.table.horizontalHeader().setStretchLastSection(True)
+        # Single-row selection: pick a colony by row → highlight on canvas
+        from PySide6.QtWidgets import QAbstractItemView
+        self.table.setSelectionBehavior(QAbstractItemView.SelectionBehavior.SelectRows)
+        self.table.setSelectionMode(QAbstractItemView.SelectionMode.SingleSelection)
+        self.table.itemSelectionChanged.connect(self._on_table_selection_changed)
         right_layout.addWidget(self.table, stretch=1)
 
         # ---- export buttons row ----
@@ -314,6 +320,41 @@ class MainWindow(QMainWindow):
 
     def _on_roi_toggled(self, checked: bool) -> None:
         self.canvas.set_roi_visible(checked)
+
+    # ---- table ↔ canvas selection link ----
+
+    def _on_table_selection_changed(self) -> None:
+        """Highlight the colony belonging to the selected table row."""
+        rows = self.table.selectionModel().selectedRows()
+        if not rows:
+            self.canvas.set_highlighted_label(None)
+            return
+        row = rows[0].row()
+        if 0 <= row < len(self.current_metrics):
+            label_id = int(self.current_metrics[row].get("id", 0))
+            self.canvas.set_highlighted_label(label_id)
+            self.status_label.setText(f"Selected colony #{label_id}")
+
+    def _on_colony_clicked(self, label_id: int) -> None:
+        """Canvas click on a colony → scroll to & select its row."""
+        if not label_id:
+            self.table.clearSelection()
+            return
+        for row, m in enumerate(self.current_metrics):
+            if int(m.get("id", 0)) == int(label_id):
+                # Block recursion: setting selection fires
+                # _on_table_selection_changed which would set the
+                # highlight again (already set), but cost is trivial
+                # so we don't bother blocking signals.
+                self.table.selectRow(row)
+                item = self.table.item(row, 0)
+                if item is not None:
+                    self.table.scrollToItem(
+                        item,
+                        self.table.ScrollHint.PositionAtCenter,
+                    )
+                self.status_label.setText(f"Selected colony #{label_id}")
+                break
 
     def _on_mode_changed(self) -> None:
         if self.mode_view.isChecked():

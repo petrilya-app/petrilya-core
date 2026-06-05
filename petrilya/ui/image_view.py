@@ -128,9 +128,10 @@ class ImageCanvas(QGraphicsView):
     # Split-handle dragging
     SPLIT_HIT_RADIUS_VIEW = 28  # in viewport pixels — handle is a fixed size
 
-    masks_edited = Signal()  # emitted after every user-triggered mask change
-    roi_changed = Signal()    # emitted when the dish ROI is moved/resized
-    split_changed = Signal()  # emitted when the before/after split is moved
+    masks_edited = Signal()    # emitted after every user-triggered mask change
+    roi_changed = Signal()     # emitted when the dish ROI is moved/resized
+    split_changed = Signal()   # emitted when the before/after split is moved
+    colony_clicked = Signal(int)  # emitted with the label id of a clicked colony
 
     def __init__(self) -> None:
         super().__init__()
@@ -174,6 +175,11 @@ class ImageCanvas(QGraphicsView):
         self._split_arrow_item = None
         self._split_dragging: bool = False
 
+        # Table-row → canvas selection: highlight one colony in vivid
+        # contrast over the regular overlay.
+        self._highlight_label: int | None = None
+        self._highlight_overlay_item: QGraphicsPixmapItem | None = None
+
         self._placeholder = self._scene.addText(
             "Drag and drop an image here\nor use File > Open"
         )
@@ -191,6 +197,8 @@ class ImageCanvas(QGraphicsView):
         self._split_handle_item = None
         self._split_handle_inner = None
         self._split_arrow_item = None
+        self._highlight_overlay_item = None
+        self._highlight_label = None
         self._base_item = QGraphicsPixmapItem(_numpy_to_qpixmap(image))
         self._scene.addItem(self._base_item)
         self._overlay_item = None
@@ -214,15 +222,85 @@ class ImageCanvas(QGraphicsView):
     def set_masks(self, masks: np.ndarray) -> None:
         self._masks = masks.astype(np.int32, copy=True)
         self._refresh_overlay()
+        # New mask set invalidates any previously highlighted label.
+        self._highlight_label = None
+        self._refresh_highlight()
 
     def clear_masks(self) -> None:
         self._masks = None
         if self._overlay_item is not None:
             self._scene.removeItem(self._overlay_item)
             self._overlay_item = None
+        if self._highlight_overlay_item is not None:
+            self._scene.removeItem(self._highlight_overlay_item)
+            self._highlight_overlay_item = None
+        self._highlight_label = None
 
     def masks(self) -> np.ndarray | None:
         return self._masks
+
+    # ---- single-colony highlight (table-row → image link) ----
+
+    def set_highlighted_label(self, label_id: int | None) -> None:
+        """Highlight one colony in vivid magenta + white outline.
+
+        Pass ``None`` (or 0) to clear the highlight.
+        """
+        if not label_id:
+            self._highlight_label = None
+        else:
+            self._highlight_label = int(label_id)
+        self._refresh_highlight()
+
+    def highlighted_label(self) -> int | None:
+        return self._highlight_label
+
+    def _refresh_highlight(self) -> None:
+        # Remove old highlight item
+        if self._highlight_overlay_item is not None:
+            if self._highlight_overlay_item.scene() is self._scene:
+                self._scene.removeItem(self._highlight_overlay_item)
+            self._highlight_overlay_item = None
+
+        if (
+            self._highlight_label is None
+            or self._masks is None
+            or self._base_item is None
+        ):
+            return
+
+        mask = self._masks == self._highlight_label
+        if not mask.any():
+            return
+
+        from scipy import ndimage as ndi
+
+        h, w = mask.shape
+        rgba = np.zeros((h, w, 4), dtype=np.uint8)
+
+        # Vivid magenta tint over the colony (contrasts against typical
+        # warm cream/yellow colonies, never collides with overlay palette).
+        rgba[mask, 0] = 255
+        rgba[mask, 1] = 30
+        rgba[mask, 2] = 200
+        rgba[mask, 3] = 110
+
+        # Bright white outline (2 px dilation - original mask = ring)
+        dilated = ndi.binary_dilation(mask, iterations=3)
+        border = dilated & ~mask
+        rgba[border, 0] = 255
+        rgba[border, 1] = 255
+        rgba[border, 2] = 255
+        rgba[border, 3] = 255
+
+        rgba = np.ascontiguousarray(rgba)
+        qimg = QImage(rgba.tobytes(), w, h, 4 * w, QImage.Format.Format_RGBA8888)
+        pix = QPixmap.fromImage(qimg.copy())
+
+        self._highlight_overlay_item = QGraphicsPixmapItem(pix)
+        # Above the regular mask overlay (z=1) but below split/ROI (z=5–13).
+        self._highlight_overlay_item.setZValue(4)
+        self._scene.addItem(self._highlight_overlay_item)
 
     def set_overlay_alpha(self, alpha: int) -> None:
         self._alpha = max(0, min(255, alpha))
@@ -582,6 +660,35 @@ class ImageCanvas(QGraphicsView):
             self._apply_edit_at(self.mapToScene(event.position().toPoint()), starting=True)
             event.accept()
             return
+
+        # Plain left-click on an existing mask: select that colony
+        # (no edit mode, no drag mode). Fires colony_clicked so the UI
+        # can scroll the corresponding table row into view.
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and not self._space_held
+            and self._masks is not None
+            and self._edit_mode == self.EDIT_NONE
+        ):
+            scene_pos = self.mapToScene(event.position().toPoint())
+            x = int(scene_pos.x())
+            y = int(scene_pos.y())
+            h, w = self._masks.shape
+            if 0 <= x < w and 0 <= y < h:
+                label_id = int(self._masks[y, x])
+                if label_id > 0:
+                    self.set_highlighted_label(label_id)
+                    self.colony_clicked.emit(label_id)
+                    event.accept()
+                    return
+                else:
+                    # Click on empty area clears the highlight
+                    if self._highlight_label is not None:
+                        self.set_highlighted_label(None)
+                        self.colony_clicked.emit(0)
+                        event.accept()
+                        return
+
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
