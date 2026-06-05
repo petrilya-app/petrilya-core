@@ -22,12 +22,13 @@ from PySide6.QtGui import (
 from PySide6.QtWidgets import (
     QGraphicsEllipseItem,
     QGraphicsItem,
+    QGraphicsLineItem,
     QGraphicsPixmapItem,
     QGraphicsScene,
     QGraphicsView,
     QSizePolicy,
 )
-from PySide6.QtCore import QRectF
+from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QBrush, QPen
 
 
@@ -72,32 +73,41 @@ def _masks_to_overlay_pixmap(masks: np.ndarray, alpha: int = 110) -> QPixmap:
 
 
 class _RevealOverlayItem(QGraphicsPixmapItem):
-    """Pixmap item that paints only its LEFT ``reveal`` fraction.
+    """Pixmap item that paints only RIGHT of ``split_x`` (in pixmap coords).
 
-    Lets the canvas implement a Lightroom-style before/after split: at
-    reveal=0 nothing painted (pure 'before'), at 1.0 the entire overlay
-    is painted (pure 'after'), in between the user sees the original on
-    the right and the analysed result on the left.
+    Lets the canvas implement a Lightroom-style before/after split:
+    ``split_x`` is the x position (in image / pixmap pixels) of the
+    vertical divider. Left of the divider the user sees the bare
+    original photo (the base item shows through); right of the divider
+    the analysed overlay is painted on top.
+
+    When ``split_x`` is ``None`` we render the overlay over the entire
+    pixmap (no split active — back to the regular full-overlay mode).
     """
 
     def __init__(self, pixmap):
         super().__init__(pixmap)
-        self._reveal = 1.0
+        self._split_x: float | None = None
 
-    def set_reveal(self, fraction: float) -> None:
-        self._reveal = max(0.0, min(1.0, float(fraction)))
+    def set_split_x(self, x: float | None) -> None:
+        if x is None:
+            self._split_x = None
+        else:
+            pix_w = self.pixmap().width()
+            self._split_x = max(0.0, min(float(pix_w), float(x)))
         self.update()
 
     def paint(self, painter, option, widget=None):  # noqa: N802
-        if self._reveal <= 0.0:
-            return
-        if self._reveal >= 1.0:
+        if self._split_x is None:
             super().paint(painter, option, widget)
             return
         pix = self.pixmap()
-        split_x = pix.width() * self._reveal
+        if self._split_x >= pix.width():
+            return  # nothing to show on the right
         painter.save()
-        painter.setClipRect(QRectF(0, 0, split_x, pix.height()))
+        painter.setClipRect(
+            QRectF(self._split_x, 0, pix.width() - self._split_x, pix.height())
+        )
         super().paint(painter, option, widget)
         painter.restore()
 
@@ -115,8 +125,12 @@ class ImageCanvas(QGraphicsView):
     ROI_RESIZE = "resize"
     ROI_HIT_RADIUS_SCENE = 18  # in scene units; pickable handle size
 
+    # Split-handle dragging
+    SPLIT_HIT_RADIUS_VIEW = 28  # in viewport pixels — handle is a fixed size
+
     masks_edited = Signal()  # emitted after every user-triggered mask change
     roi_changed = Signal()    # emitted when the dish ROI is moved/resized
+    split_changed = Signal()  # emitted when the before/after split is moved
 
     def __init__(self) -> None:
         super().__init__()
@@ -150,6 +164,16 @@ class ImageCanvas(QGraphicsView):
         self._roi_drag_mode: str = self.ROI_NONE
         self._roi_drag_offset: tuple[float, float] = (0.0, 0.0)
 
+        # Before / after split — vertical line + draggable handle on the
+        # image. split_x is in scene/pixmap coordinates.
+        self._split_visible: bool = False
+        self._split_x: float | None = None
+        self._split_line_item: QGraphicsLineItem | None = None
+        self._split_handle_item: QGraphicsEllipseItem | None = None
+        self._split_handle_inner: QGraphicsEllipseItem | None = None
+        self._split_arrow_item = None
+        self._split_dragging: bool = False
+
         self._placeholder = self._scene.addText(
             "Drag and drop an image here\nor use File > Open"
         )
@@ -163,6 +187,10 @@ class ImageCanvas(QGraphicsView):
         self._roi_circle_item = None
         self._roi_center_handle = None
         self._roi_edge_handle = None
+        self._split_line_item = None
+        self._split_handle_item = None
+        self._split_handle_inner = None
+        self._split_arrow_item = None
         self._base_item = QGraphicsPixmapItem(_numpy_to_qpixmap(image))
         self._scene.addItem(self._base_item)
         self._overlay_item = None
@@ -175,6 +203,11 @@ class ImageCanvas(QGraphicsView):
         self._roi = (w / 2, h / 2, side * 0.40)
         if self._roi_visible:
             self._draw_roi()
+
+        # Default split at the horizontal midpoint of the image
+        self._split_x = w / 2
+        if self._split_visible:
+            self._draw_split()
 
         self.fit_to_window()
 
@@ -195,13 +228,145 @@ class ImageCanvas(QGraphicsView):
         self._alpha = max(0, min(255, alpha))
         self._refresh_overlay()
 
-    # ----------------------------- reveal split -----------------------------
+    # ----------------------------- before/after split -----------------------
 
-    def set_reveal(self, fraction: float) -> None:
-        """0 = pure 'before' (no overlay shown), 1 = pure 'after'."""
-        self._reveal = max(0.0, min(1.0, float(fraction)))
-        if self._overlay_item is not None:
-            self._overlay_item.set_reveal(self._reveal)
+    def set_split_visible(self, visible: bool) -> None:
+        """Show or hide the vertical before/after divider on the canvas."""
+        self._split_visible = bool(visible)
+        if not visible:
+            self._clear_split_items()
+            if self._overlay_item is not None:
+                self._overlay_item.set_split_x(None)
+        elif self._split_x is not None:
+            self._draw_split()
+            if self._overlay_item is not None:
+                self._overlay_item.set_split_x(self._split_x)
+
+    def is_split_visible(self) -> bool:
+        return self._split_visible
+
+    def set_split_x(self, x: float) -> None:
+        self._split_x = float(x)
+        if self._split_visible:
+            self._draw_split()
+            if self._overlay_item is not None:
+                self._overlay_item.set_split_x(self._split_x)
+            self.split_changed.emit()
+
+    def split_x(self) -> float | None:
+        return self._split_x
+
+    def _clear_split_items(self) -> None:
+        for item in (
+            self._split_line_item,
+            self._split_handle_item,
+            self._split_handle_inner,
+            self._split_arrow_item,
+        ):
+            if item is not None and item.scene() is self._scene:
+                self._scene.removeItem(item)
+        self._split_line_item = None
+        self._split_handle_item = None
+        self._split_handle_inner = None
+        self._split_arrow_item = None
+
+    def _draw_split(self) -> None:
+        if self._base_item is None or self._split_x is None:
+            return
+        h = self._base_item.pixmap().height()
+
+        # Cosmetic white line that stays 2 px regardless of zoom
+        line_pen = QPen(QColor(255, 255, 255), 0)
+        line_pen.setCosmetic(True)
+        line_pen.setWidth(2)
+        line_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+
+        if self._split_line_item is None:
+            self._split_line_item = QGraphicsLineItem()
+            self._split_line_item.setZValue(10)
+            self._scene.addItem(self._split_line_item)
+        self._split_line_item.setPen(line_pen)
+        self._split_line_item.setLine(self._split_x, 0, self._split_x, h)
+
+        # Round draggable handle at the vertical centre of the image.
+        # ItemIgnoresTransformations keeps it at constant viewport size.
+        handle_radius_view = self.SPLIT_HIT_RADIUS_VIEW
+        handle_rect = QRectF(
+            -handle_radius_view, -handle_radius_view,
+            handle_radius_view * 2, handle_radius_view * 2,
+        )
+        inner_rect = QRectF(
+            -handle_radius_view + 3, -handle_radius_view + 3,
+            (handle_radius_view - 3) * 2, (handle_radius_view - 3) * 2,
+        )
+        handle_pos = QPointF(self._split_x, h / 2)
+
+        if self._split_handle_item is None:
+            self._split_handle_item = QGraphicsEllipseItem()
+            self._split_handle_item.setZValue(11)
+            self._split_handle_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
+            )
+            self._scene.addItem(self._split_handle_item)
+        # Outer ring: white with subtle shadow
+        outer_pen = QPen(QColor(40, 50, 70, 180), 1)
+        outer_pen.setCosmetic(True)
+        self._split_handle_item.setPen(outer_pen)
+        self._split_handle_item.setBrush(QBrush(QColor(255, 255, 255, 240)))
+        self._split_handle_item.setRect(handle_rect)
+        self._split_handle_item.setPos(handle_pos)
+
+        if self._split_handle_inner is None:
+            self._split_handle_inner = QGraphicsEllipseItem()
+            self._split_handle_inner.setZValue(12)
+            self._split_handle_inner.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
+            )
+            self._scene.addItem(self._split_handle_inner)
+        # Inner dot: brand amber so the handle reads as 'active' & branded
+        self._split_handle_inner.setPen(QPen(Qt.PenStyle.NoPen))
+        self._split_handle_inner.setBrush(QBrush(QColor(240, 200, 74)))
+        self._split_handle_inner.setRect(inner_rect)
+        self._split_handle_inner.setPos(handle_pos)
+
+        # Two little arrows ← → on the inner dot, indicating draggable.
+        # Built as a tiny QGraphicsPathItem.
+        from PySide6.QtGui import QPainterPath
+        from PySide6.QtWidgets import QGraphicsPathItem
+
+        if self._split_arrow_item is None:
+            self._split_arrow_item = QGraphicsPathItem()
+            self._split_arrow_item.setZValue(13)
+            self._split_arrow_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
+            )
+            self._scene.addItem(self._split_arrow_item)
+        path = QPainterPath()
+        # Left chevron
+        path.moveTo(-7, -4)
+        path.lineTo(-11, 0)
+        path.lineTo(-7, 4)
+        # Right chevron
+        path.moveTo(7, -4)
+        path.lineTo(11, 0)
+        path.lineTo(7, 4)
+        arrow_pen = QPen(QColor(40, 50, 70, 230), 2)
+        arrow_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
+        arrow_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        self._split_arrow_item.setPen(arrow_pen)
+        self._split_arrow_item.setPath(path)
+        self._split_arrow_item.setPos(handle_pos)
+
+    def _split_handle_hit(self, scene_pos: QPointF) -> bool:
+        if not self._split_visible or self._split_x is None or self._base_item is None:
+            return False
+        # Convert the handle's centre back to viewport coords, compare in pixels
+        handle_scene = QPointF(self._split_x, self._base_item.pixmap().height() / 2)
+        handle_view = self.mapFromScene(handle_scene)
+        click_view = self.mapFromScene(scene_pos)
+        dx = click_view.x() - handle_view.x()
+        dy = click_view.y() - handle_view.y()
+        return (dx * dx + dy * dy) ** 0.5 <= self.SPLIT_HIT_RADIUS_VIEW + 4
 
     # ----------------------------- dish ROI ---------------------------------
 
@@ -306,11 +471,12 @@ class ImageCanvas(QGraphicsView):
         if self._overlay_item is None:
             self._overlay_item = _RevealOverlayItem(pix)
             self._overlay_item.setZValue(1)
-            self._overlay_item.set_reveal(self._reveal)
             self._scene.addItem(self._overlay_item)
         else:
             self._overlay_item.setPixmap(pix)
-            self._overlay_item.set_reveal(self._reveal)
+        # If the before/after split is visible, the overlay paints only
+        # right of the divider. Otherwise it covers the whole image.
+        self._overlay_item.set_split_x(self._split_x if self._split_visible else None)
 
     # ----------------------------- interaction ------------------------------
 
@@ -381,6 +547,16 @@ class ImageCanvas(QGraphicsView):
             super().mousePressEvent(fake)
             return
 
+        # Split handle has highest priority — it's a bright on-canvas
+        # affordance and the user expects clicking it to drag.
+        if event.button() == Qt.MouseButton.LeftButton and not self._space_held:
+            scene_pos = self.mapToScene(event.position().toPoint())
+            if self._split_handle_hit(scene_pos):
+                self._split_dragging = True
+                self.viewport().setCursor(Qt.CursorShape.SizeHorCursor)
+                event.accept()
+                return
+
         # ROI takes precedence over edit modes when visible and the click
         # is on one of the handles.
         if event.button() == Qt.MouseButton.LeftButton and not self._space_held:
@@ -409,6 +585,19 @@ class ImageCanvas(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        # Split-handle drag has highest priority while active.
+        if self._split_dragging and self._base_item is not None:
+            scene_pos = self.mapToScene(event.position().toPoint())
+            pix_w = self._base_item.pixmap().width()
+            new_x = max(0.0, min(float(pix_w), float(scene_pos.x())))
+            self._split_x = new_x
+            self._draw_split()
+            if self._overlay_item is not None:
+                self._overlay_item.set_split_x(self._split_x)
+            self.split_changed.emit()
+            event.accept()
+            return
+
         # Handle ROI dragging first
         if self._roi_drag_mode != self.ROI_NONE and self._roi is not None:
             scene_pos = self.mapToScene(event.position().toPoint())
@@ -425,18 +614,23 @@ class ImageCanvas(QGraphicsView):
             event.accept()
             return
 
-        # Hover cursor over ROI handles when not dragging
-        if (
-            self._roi_visible
-            and self._roi_drag_mode == self.ROI_NONE
-            and not (event.buttons() & Qt.MouseButton.LeftButton)
-        ):
+        # Hover cursors: split > ROI > edit-mode > default
+        if not (event.buttons() & Qt.MouseButton.LeftButton):
             scene_pos = self.mapToScene(event.position().toPoint())
-            hit = self._roi_hit_test(scene_pos)
-            if hit == self.ROI_MOVE:
-                self.viewport().setCursor(Qt.CursorShape.OpenHandCursor)
-            elif hit == self.ROI_RESIZE:
-                self.viewport().setCursor(Qt.CursorShape.SizeFDiagCursor)
+            if self._split_visible and self._split_handle_hit(scene_pos):
+                self.viewport().setCursor(Qt.CursorShape.SizeHorCursor)
+            elif self._roi_visible and self._roi_drag_mode == self.ROI_NONE:
+                hit = self._roi_hit_test(scene_pos)
+                if hit == self.ROI_MOVE:
+                    self.viewport().setCursor(Qt.CursorShape.OpenHandCursor)
+                elif hit == self.ROI_RESIZE:
+                    self.viewport().setCursor(Qt.CursorShape.SizeFDiagCursor)
+                else:
+                    self.viewport().setCursor(
+                        Qt.CursorShape.CrossCursor
+                        if self._edit_mode != self.EDIT_NONE
+                        else Qt.CursorShape.ArrowCursor
+                    )
             else:
                 self.viewport().setCursor(
                     Qt.CursorShape.CrossCursor
@@ -458,6 +652,11 @@ class ImageCanvas(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        if self._split_dragging:
+            self._split_dragging = False
+            self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
+            event.accept()
+            return
         if self._roi_drag_mode != self.ROI_NONE:
             self._roi_drag_mode = self.ROI_NONE
             self.viewport().setCursor(Qt.CursorShape.ArrowCursor)

@@ -166,22 +166,16 @@ class MainWindow(QMainWindow):
         alpha_row.addWidget(self.alpha_value_label)
         view_layout.addLayout(alpha_row)
 
-        # reveal / before-after split
-        reveal_row = QHBoxLayout()
-        reveal_row.addWidget(QLabel("Reveal:"))
-        self.reveal_slider = QSlider(Qt.Orientation.Horizontal)
-        self.reveal_slider.setRange(0, 100)
-        self.reveal_slider.setValue(100)
-        self.reveal_slider.setToolTip(
-            "Before/After split. 0 = pure original, 100 = full mask overlay.\n"
-            "In between, the analysed result is revealed from left to right."
+        # before/after split toggle — drag the handle ON the image
+        split_row = QHBoxLayout()
+        self.split_check = QCheckBox("Compare before / after")
+        self.split_check.setToolTip(
+            "Show a draggable vertical divider on the image. Left of the "
+            "line = original photo; right of the line = result with masks."
         )
-        self.reveal_slider.valueChanged.connect(self._on_reveal_changed)
-        self.reveal_value_label = QLabel("100%")
-        self.reveal_value_label.setMinimumWidth(36)
-        reveal_row.addWidget(self.reveal_slider)
-        reveal_row.addWidget(self.reveal_value_label)
-        view_layout.addLayout(reveal_row)
+        self.split_check.toggled.connect(self._on_split_toggled)
+        split_row.addWidget(self.split_check)
+        view_layout.addLayout(split_row)
 
         # manual dish ROI
         roi_row = QHBoxLayout()
@@ -315,9 +309,8 @@ class MainWindow(QMainWindow):
         self.alpha_value_label.setText(f"{percent}%")
         self.canvas.set_overlay_alpha(int(round(percent * 255 / 100)))
 
-    def _on_reveal_changed(self, percent: int) -> None:
-        self.reveal_value_label.setText(f"{percent}%")
-        self.canvas.set_reveal(percent / 100.0)
+    def _on_split_toggled(self, checked: bool) -> None:
+        self.canvas.set_split_visible(checked)
 
     def _on_roi_toggled(self, checked: bool) -> None:
         self.canvas.set_roi_visible(checked)
