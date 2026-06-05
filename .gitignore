@@ -235,6 +235,8 @@ tests/data/
 # Landing page assets must be tracked even though *.png is ignored above
 !docs/*.png
 !docs/*.jpg
+!docs/petri-layers/*.png
+!docs/petri-layers/*.jpg
 
 # Local PyPI build artifacts
 dist/
