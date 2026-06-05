@@ -166,6 +166,35 @@ class MainWindow(QMainWindow):
         alpha_row.addWidget(self.alpha_value_label)
         view_layout.addLayout(alpha_row)
 
+        # reveal / before-after split
+        reveal_row = QHBoxLayout()
+        reveal_row.addWidget(QLabel("Reveal:"))
+        self.reveal_slider = QSlider(Qt.Orientation.Horizontal)
+        self.reveal_slider.setRange(0, 100)
+        self.reveal_slider.setValue(100)
+        self.reveal_slider.setToolTip(
+            "Before/After split. 0 = pure original, 100 = full mask overlay.\n"
+            "In between, the analysed result is revealed from left to right."
+        )
+        self.reveal_slider.valueChanged.connect(self._on_reveal_changed)
+        self.reveal_value_label = QLabel("100%")
+        self.reveal_value_label.setMinimumWidth(36)
+        reveal_row.addWidget(self.reveal_slider)
+        reveal_row.addWidget(self.reveal_value_label)
+        view_layout.addLayout(reveal_row)
+
+        # manual dish ROI
+        roi_row = QHBoxLayout()
+        self.roi_check = QCheckBox("Set dish boundary manually")
+        self.roi_check.setToolTip(
+            "Drag the centre handle to move the circle, drag the right-edge "
+            "handle to resize it. The engine will look for colonies only "
+            "inside this circle and ignore the rim and background."
+        )
+        self.roi_check.toggled.connect(self._on_roi_toggled)
+        roi_row.addWidget(self.roi_check)
+        view_layout.addLayout(roi_row)
+
         # edit mode radios
         edit_row = QHBoxLayout()
         edit_row.addWidget(QLabel("Mode:"))
@@ -286,6 +315,13 @@ class MainWindow(QMainWindow):
         self.alpha_value_label.setText(f"{percent}%")
         self.canvas.set_overlay_alpha(int(round(percent * 255 / 100)))
 
+    def _on_reveal_changed(self, percent: int) -> None:
+        self.reveal_value_label.setText(f"{percent}%")
+        self.canvas.set_reveal(percent / 100.0)
+
+    def _on_roi_toggled(self, checked: bool) -> None:
+        self.canvas.set_roi_visible(checked)
+
     def _on_mode_changed(self) -> None:
         if self.mode_view.isChecked():
             self.canvas.set_edit_mode(ImageCanvas.EDIT_NONE)
@@ -348,10 +384,14 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(True)
         self.status_label.setText("Working...")
 
+        # Pass the manual dish ROI if the user enabled it; otherwise let
+        # the engine auto-detect via Hough.
+        roi = self.canvas.dish_roi() if self.canvas.is_roi_visible() else None
         worker = AnalysisWorker(
             self.current_image_path,
             use_gpu=self.gpu_check.isChecked(),
             scale_um_per_px=self._scale_value(),
+            dish_roi=roi,
         )
         worker.signals.progress.connect(self.status_label.setText)
         worker.signals.finished.connect(self.on_finished)

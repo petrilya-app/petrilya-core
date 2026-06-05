@@ -20,11 +20,15 @@ from PySide6.QtGui import (
     QWheelEvent,
 )
 from PySide6.QtWidgets import (
+    QGraphicsEllipseItem,
+    QGraphicsItem,
     QGraphicsPixmapItem,
     QGraphicsScene,
     QGraphicsView,
     QSizePolicy,
 )
+from PySide6.QtCore import QRectF
+from PySide6.QtGui import QBrush, QPen
 
 
 def _numpy_to_qpixmap(arr: np.ndarray) -> QPixmap:
@@ -67,6 +71,37 @@ def _masks_to_overlay_pixmap(masks: np.ndarray, alpha: int = 110) -> QPixmap:
     return QPixmap.fromImage(qimg.copy())
 
 
+class _RevealOverlayItem(QGraphicsPixmapItem):
+    """Pixmap item that paints only its LEFT ``reveal`` fraction.
+
+    Lets the canvas implement a Lightroom-style before/after split: at
+    reveal=0 nothing painted (pure 'before'), at 1.0 the entire overlay
+    is painted (pure 'after'), in between the user sees the original on
+    the right and the analysed result on the left.
+    """
+
+    def __init__(self, pixmap):
+        super().__init__(pixmap)
+        self._reveal = 1.0
+
+    def set_reveal(self, fraction: float) -> None:
+        self._reveal = max(0.0, min(1.0, float(fraction)))
+        self.update()
+
+    def paint(self, painter, option, widget=None):  # noqa: N802
+        if self._reveal <= 0.0:
+            return
+        if self._reveal >= 1.0:
+            super().paint(painter, option, widget)
+            return
+        pix = self.pixmap()
+        split_x = pix.width() * self._reveal
+        painter.save()
+        painter.setClipRect(QRectF(0, 0, split_x, pix.height()))
+        super().paint(painter, option, widget)
+        painter.restore()
+
+
 class ImageCanvas(QGraphicsView):
     """Zoomable, pannable, editable image canvas."""
 
@@ -74,7 +109,14 @@ class ImageCanvas(QGraphicsView):
     EDIT_ERASE = "erase"
     EDIT_BRUSH = "brush"
 
+    # ROI dragging modes
+    ROI_NONE = "none"
+    ROI_MOVE = "move"
+    ROI_RESIZE = "resize"
+    ROI_HIT_RADIUS_SCENE = 18  # in scene units; pickable handle size
+
     masks_edited = Signal()  # emitted after every user-triggered mask change
+    roi_changed = Signal()    # emitted when the dish ROI is moved/resized
 
     def __init__(self) -> None:
         super().__init__()
@@ -90,13 +132,23 @@ class ImageCanvas(QGraphicsView):
         self.setDragMode(QGraphicsView.DragMode.NoDrag)
 
         self._base_item: QGraphicsPixmapItem | None = None
-        self._overlay_item: QGraphicsPixmapItem | None = None
+        self._overlay_item: _RevealOverlayItem | None = None
         self._masks: np.ndarray | None = None
         self._alpha: int = 110
+        self._reveal: float = 1.0
         self._edit_mode: str = self.EDIT_NONE
         self._brush_size: int = 14
         self._brush_active_label: int = 0
         self._space_held: bool = False
+
+        # Dish ROI (manual override of the engine's auto-detect)
+        self._roi_circle_item: QGraphicsEllipseItem | None = None
+        self._roi_center_handle: QGraphicsEllipseItem | None = None
+        self._roi_edge_handle: QGraphicsEllipseItem | None = None
+        self._roi_visible: bool = False
+        self._roi: tuple[float, float, float] | None = None  # (cx, cy, r)
+        self._roi_drag_mode: str = self.ROI_NONE
+        self._roi_drag_offset: tuple[float, float] = (0.0, 0.0)
 
         self._placeholder = self._scene.addText(
             "Drag and drop an image here\nor use File > Open"
@@ -108,11 +160,22 @@ class ImageCanvas(QGraphicsView):
     def set_image(self, image: np.ndarray) -> None:
         self._scene.clear()
         self._placeholder = None
+        self._roi_circle_item = None
+        self._roi_center_handle = None
+        self._roi_edge_handle = None
         self._base_item = QGraphicsPixmapItem(_numpy_to_qpixmap(image))
         self._scene.addItem(self._base_item)
         self._overlay_item = None
         self._masks = None
         self._scene.setSceneRect(self._base_item.boundingRect())
+
+        # Default ROI = centred circle covering ~80% of the shorter side
+        h, w = image.shape[:2]
+        side = min(h, w)
+        self._roi = (w / 2, h / 2, side * 0.40)
+        if self._roi_visible:
+            self._draw_roi()
+
         self.fit_to_window()
 
     def set_masks(self, masks: np.ndarray) -> None:
@@ -131,6 +194,88 @@ class ImageCanvas(QGraphicsView):
     def set_overlay_alpha(self, alpha: int) -> None:
         self._alpha = max(0, min(255, alpha))
         self._refresh_overlay()
+
+    # ----------------------------- reveal split -----------------------------
+
+    def set_reveal(self, fraction: float) -> None:
+        """0 = pure 'before' (no overlay shown), 1 = pure 'after'."""
+        self._reveal = max(0.0, min(1.0, float(fraction)))
+        if self._overlay_item is not None:
+            self._overlay_item.set_reveal(self._reveal)
+
+    # ----------------------------- dish ROI ---------------------------------
+
+    def set_roi_visible(self, visible: bool) -> None:
+        self._roi_visible = bool(visible)
+        if not visible:
+            self._clear_roi_items()
+            self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
+        elif self._roi is not None:
+            self._draw_roi()
+
+    def is_roi_visible(self) -> bool:
+        return self._roi_visible
+
+    def set_dish_roi(self, cx: float, cy: float, r: float) -> None:
+        self._roi = (float(cx), float(cy), max(10.0, float(r)))
+        if self._roi_visible:
+            self._draw_roi()
+
+    def dish_roi(self) -> tuple[float, float, float] | None:
+        return self._roi
+
+    def _clear_roi_items(self) -> None:
+        for item in (self._roi_circle_item, self._roi_center_handle, self._roi_edge_handle):
+            if item is not None and item.scene() is self._scene:
+                self._scene.removeItem(item)
+        self._roi_circle_item = None
+        self._roi_center_handle = None
+        self._roi_edge_handle = None
+
+    def _draw_roi(self) -> None:
+        if self._roi is None or self._base_item is None:
+            return
+        cx, cy, r = self._roi
+
+        roi_pen = QPen(QColor(91, 142, 217), 0)
+        roi_pen.setCosmetic(True)  # constant 2px regardless of zoom
+        roi_pen.setWidth(2)
+        roi_pen.setStyle(Qt.PenStyle.DashLine)
+        roi_pen.setDashPattern([5, 5])
+
+        handle_pen = QPen(QColor(91, 142, 217), 0)
+        handle_pen.setCosmetic(True)
+        handle_pen.setWidth(1)
+        handle_brush = QBrush(QColor(255, 255, 255, 230))
+
+        # Main outline
+        if self._roi_circle_item is None:
+            self._roi_circle_item = QGraphicsEllipseItem()
+            self._roi_circle_item.setZValue(5)
+            self._scene.addItem(self._roi_circle_item)
+        self._roi_circle_item.setPen(roi_pen)
+        self._roi_circle_item.setRect(cx - r, cy - r, 2 * r, 2 * r)
+
+        # Handles — small filled circles in scene coords. Drawn at 12 scene px
+        # which then scales with zoom; that's fine — bigger handle when
+        # zoomed in is convenient.
+        h = max(6.0, r * 0.04)
+
+        if self._roi_center_handle is None:
+            self._roi_center_handle = QGraphicsEllipseItem()
+            self._roi_center_handle.setZValue(6)
+            self._scene.addItem(self._roi_center_handle)
+        self._roi_center_handle.setPen(handle_pen)
+        self._roi_center_handle.setBrush(handle_brush)
+        self._roi_center_handle.setRect(cx - h, cy - h, 2 * h, 2 * h)
+
+        if self._roi_edge_handle is None:
+            self._roi_edge_handle = QGraphicsEllipseItem()
+            self._roi_edge_handle.setZValue(6)
+            self._scene.addItem(self._roi_edge_handle)
+        self._roi_edge_handle.setPen(handle_pen)
+        self._roi_edge_handle.setBrush(handle_brush)
+        self._roi_edge_handle.setRect(cx + r - h, cy - h, 2 * h, 2 * h)
 
     def set_edit_mode(self, mode: str) -> None:
         if mode not in (self.EDIT_NONE, self.EDIT_ERASE, self.EDIT_BRUSH):
@@ -159,11 +304,13 @@ class ImageCanvas(QGraphicsView):
             return
         pix = _masks_to_overlay_pixmap(self._masks, alpha=self._alpha)
         if self._overlay_item is None:
-            self._overlay_item = QGraphicsPixmapItem(pix)
+            self._overlay_item = _RevealOverlayItem(pix)
             self._overlay_item.setZValue(1)
+            self._overlay_item.set_reveal(self._reveal)
             self._scene.addItem(self._overlay_item)
         else:
             self._overlay_item.setPixmap(pix)
+            self._overlay_item.set_reveal(self._reveal)
 
     # ----------------------------- interaction ------------------------------
 
@@ -204,6 +351,22 @@ class ImageCanvas(QGraphicsView):
             return
         super().keyReleaseEvent(event)
 
+    def _roi_hit_test(self, scene_pos):
+        if not self._roi_visible or self._roi is None:
+            return self.ROI_NONE
+        cx, cy, r = self._roi
+        x, y = scene_pos.x(), scene_pos.y()
+        # scene units; convert to a viewport-pixel-equivalent so the hit
+        # area stays constant at every zoom level
+        hit_scene = self.ROI_HIT_RADIUS_SCENE / max(self.transform().m11(), 1e-6)
+        d_center = ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5
+        if d_center <= hit_scene:
+            return self.ROI_MOVE
+        # near the circle outline?
+        if abs(d_center - r) <= hit_scene:
+            return self.ROI_RESIZE
+        return self.ROI_NONE
+
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
         # middle button always pans
         if event.button() == Qt.MouseButton.MiddleButton:
@@ -218,6 +381,22 @@ class ImageCanvas(QGraphicsView):
             super().mousePressEvent(fake)
             return
 
+        # ROI takes precedence over edit modes when visible and the click
+        # is on one of the handles.
+        if event.button() == Qt.MouseButton.LeftButton and not self._space_held:
+            scene_pos = self.mapToScene(event.position().toPoint())
+            hit = self._roi_hit_test(scene_pos)
+            if hit != self.ROI_NONE:
+                self._roi_drag_mode = hit
+                cx, cy, _ = self._roi
+                self._roi_drag_offset = (scene_pos.x() - cx, scene_pos.y() - cy)
+                self.viewport().setCursor(
+                    Qt.CursorShape.ClosedHandCursor if hit == self.ROI_MOVE
+                    else Qt.CursorShape.SizeFDiagCursor
+                )
+                event.accept()
+                return
+
         if (
             event.button() == Qt.MouseButton.LeftButton
             and not self._space_held
@@ -230,6 +409,41 @@ class ImageCanvas(QGraphicsView):
         super().mousePressEvent(event)
 
     def mouseMoveEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        # Handle ROI dragging first
+        if self._roi_drag_mode != self.ROI_NONE and self._roi is not None:
+            scene_pos = self.mapToScene(event.position().toPoint())
+            x, y = scene_pos.x(), scene_pos.y()
+            cx, cy, r = self._roi
+            if self._roi_drag_mode == self.ROI_MOVE:
+                ox, oy = self._roi_drag_offset
+                self._roi = (x - ox, y - oy, r)
+            else:  # ROI_RESIZE
+                new_r = max(15.0, ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5)
+                self._roi = (cx, cy, new_r)
+            self._draw_roi()
+            self.roi_changed.emit()
+            event.accept()
+            return
+
+        # Hover cursor over ROI handles when not dragging
+        if (
+            self._roi_visible
+            and self._roi_drag_mode == self.ROI_NONE
+            and not (event.buttons() & Qt.MouseButton.LeftButton)
+        ):
+            scene_pos = self.mapToScene(event.position().toPoint())
+            hit = self._roi_hit_test(scene_pos)
+            if hit == self.ROI_MOVE:
+                self.viewport().setCursor(Qt.CursorShape.OpenHandCursor)
+            elif hit == self.ROI_RESIZE:
+                self.viewport().setCursor(Qt.CursorShape.SizeFDiagCursor)
+            else:
+                self.viewport().setCursor(
+                    Qt.CursorShape.CrossCursor
+                    if self._edit_mode != self.EDIT_NONE
+                    else Qt.CursorShape.ArrowCursor
+                )
+
         if (
             event.buttons() & Qt.MouseButton.LeftButton
             and not self._space_held
@@ -244,6 +458,11 @@ class ImageCanvas(QGraphicsView):
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        if self._roi_drag_mode != self.ROI_NONE:
+            self._roi_drag_mode = self.ROI_NONE
+            self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
+            event.accept()
+            return
         if event.button() == Qt.MouseButton.MiddleButton:
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
             return

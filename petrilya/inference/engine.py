@@ -177,20 +177,38 @@ class CellposeEngine:
         self,
         image: np.ndarray,
         diameter: float | None = None,
+        dish_roi: tuple[float, float, float] | None = None,
     ) -> tuple[np.ndarray, float]:
+        """Segment ``image``.
+
+        ``dish_roi`` is an optional ``(cx, cy, r)`` triple in image-pixel
+        coordinates: if supplied, we use it to scale the colony-diameter
+        hint AND to mask out everything outside the circle before
+        running Cellpose. Lets the user drop the auto-detect when the
+        Hough circle gets it wrong (off-centre, dish-on-dish stack etc).
+        """
         gray = to_grayscale(image)
 
-        # If the caller didn't pin a diameter, try to estimate one from
-        # the dish radius — colonies are typically 3-8% of the dish
-        # diameter on a phone photo. Without this hint Cellpose auto-
-        # scales to whatever looks cell-sized in the photo, which on a
-        # 4K image of a plate with marker-pen text is the individual
-        # character pixels — disaster.
-        if diameter is None:
-            dish_r = _estimate_dish_radius(gray)
-            if dish_r is not None:
-                # 5% of dish diameter ≈ typical bacterial colony
-                diameter = max(15.0, 2.0 * dish_r * 0.05)
+        # Optional ROI masking — zero everything outside the user circle
+        # so Cellpose can't find 'cells' on the dish rim or background.
+        if dish_roi is not None:
+            cx, cy, r = dish_roi
+            h, w = gray.shape
+            yy, xx = np.ogrid[:h, :w]
+            outside = (xx - cx) ** 2 + (yy - cy) ** 2 > r * r
+            gray = gray.copy()
+            gray[outside] = 0
+            dish_r_for_diameter = r
+        elif diameter is None:
+            dish_r_for_diameter = _estimate_dish_radius(gray)
+        else:
+            dish_r_for_diameter = None
+
+        # Pick a diameter hint Cellpose can use. Without this, on a 4K
+        # macro photo Cellpose auto-scales to text-pixel size and
+        # finds hundreds of letter-fragments as 'cells'.
+        if diameter is None and dish_r_for_diameter is not None:
+            diameter = max(15.0, 2.0 * dish_r_for_diameter * 0.05)
 
         self.last_diameter = diameter
 

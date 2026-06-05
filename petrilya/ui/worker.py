@@ -28,17 +28,20 @@ def _load_image(path: Path) -> np.ndarray:
 def run_segmentation(
     image: np.ndarray,
     use_gpu: bool,
+    dish_roi: tuple[float, float, float] | None = None,
 ) -> tuple[np.ndarray, float, str, dict]:
-    """Run Cellpose segmentation; returns (masks, elapsed, name, manifest).
-
-    The manifest carries the shape-filter stats so the UI can show e.g.
-    'Cellpose found 264 candidates → 18 colonies after shape filter'.
-    """
+    """Run Cellpose segmentation; returns (masks, elapsed, name, manifest)."""
     t0 = time.perf_counter()
     engine = CellposeEngine(use_gpu=use_gpu)
-    masks, _diam = engine.segment(image)
+    masks, _diam = engine.segment(image, dish_roi=dish_roi)
     elapsed = time.perf_counter() - t0
     manifest = engine.describe()
+    if dish_roi is not None:
+        manifest["params"]["dish_roi_manual"] = {
+            "cx": float(dish_roi[0]),
+            "cy": float(dish_roi[1]),
+            "r":  float(dish_roi[2]),
+        }
     return masks, elapsed, manifest["engine"], manifest
 
 
@@ -55,11 +58,13 @@ class AnalysisWorker(QRunnable):
         image_path: Path,
         use_gpu: bool = False,
         scale_um_per_px: float | None = None,
+        dish_roi: tuple[float, float, float] | None = None,
     ) -> None:
         super().__init__()
         self.image_path = image_path
         self.use_gpu = use_gpu
         self.scale_um_per_px = scale_um_per_px
+        self.dish_roi = dish_roi
         self.signals = WorkerSignals()
 
     @Slot()
@@ -73,7 +78,7 @@ class AnalysisWorker(QRunnable):
                 f"Segmenting with Cellpose ({'GPU' if self.use_gpu else 'CPU'})..."
             )
             masks, elapsed, engine_name, params = run_segmentation(
-                display_image, self.use_gpu
+                display_image, self.use_gpu, dish_roi=self.dish_roi
             )
 
             self.signals.progress.emit("Computing metrics...")
