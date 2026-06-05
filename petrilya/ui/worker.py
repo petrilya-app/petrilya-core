@@ -29,7 +29,11 @@ def run_segmentation(
     image: np.ndarray,
     use_gpu: bool,
 ) -> tuple[np.ndarray, float, str, dict]:
-    """Run Cellpose segmentation; returns (masks, elapsed, name, params)."""
+    """Run Cellpose segmentation; returns (masks, elapsed, name, manifest).
+
+    The manifest carries the shape-filter stats so the UI can show e.g.
+    'Cellpose found 264 candidates → 18 colonies after shape filter'.
+    """
     t0 = time.perf_counter()
     engine = CellposeEngine(use_gpu=use_gpu)
     masks, _diam = engine.segment(image)

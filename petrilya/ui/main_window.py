@@ -378,9 +378,24 @@ class MainWindow(QMainWindow):
         self.canvas.set_masks(masks)
 
         unit = "um^2" if self._scale_value() else "px"
+        # If the engine reported shape-filter stats, surface them — gives
+        # the user honest insight into how much Cellpose's raw output
+        # was trimmed (text strokes, scratches etc.).
+        filter_note = ""
+        stats = engine_params.get("filter_stats") if isinstance(engine_params, dict) else None
+        if stats and stats.get("before", 0) > stats.get("kept", 0):
+            dropped = stats["before"] - stats["kept"]
+            filter_note = (
+                f"<br><span style='color:#888'>"
+                f"raw {stats['before']} → {stats['kept']} after shape filter "
+                f"(–{dropped} non-circular)"
+                f"</span>"
+            )
+
         self.summary_label.setText(
             f"<b>{len(metrics)}</b> colonies found in <b>{elapsed:.2f}s</b><br>"
             f"<span style='color:#aaa'>engine: {engine_name} | unit: {unit}</span>"
+            f"{filter_note}"
         )
         self.status_label.setText(f"Done — {len(metrics)} colonies in {elapsed:.2f}s")
         self._populate_table(metrics)
