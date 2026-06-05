@@ -31,6 +31,8 @@ MANIFEST
 #   before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+# ...except our PyInstaller config which is checked in
+!scripts/petrilya.spec
 
 # Installer logs
 pip-log.txt
