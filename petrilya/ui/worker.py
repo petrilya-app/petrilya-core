@@ -13,58 +13,47 @@ from PySide6.QtCore import QObject, QRunnable, Signal, Slot
 from petrilya.export.csv_writer import write_csv
 from petrilya.export.json_manifest import build_manifest, write_manifest
 from petrilya.export.pdf_report import write_pdf_report
-from petrilya.inference.engine import build_engine
+from petrilya.inference.engine import CellposeEngine
 from petrilya.metrics.colony import compute_colony_metrics
-from petrilya.ui.mock_engine import mock_segment
+
+
+def _load_image(path: Path) -> np.ndarray:
+    """Load image preserving native colour mode for display."""
+    pil = Image.open(path)
+    if pil.mode in ("RGB", "RGBA", "L"):
+        return np.array(pil)
+    return np.array(pil.convert("RGB"))
 
 
 def run_segmentation(
     image: np.ndarray,
-    engine_id: str,
     use_gpu: bool,
 ) -> tuple[np.ndarray, float, str, dict]:
-    """Run segmentation with the selected engine.
-
-    Returns (masks, elapsed_seconds, engine_name, engine_params).
-    Falls back to the mock engine if anything in the real pipeline
-    raises — the UI keeps working and the error bubbles up via the
-    AnalysisWorker's `error` signal.
-    """
+    """Run Cellpose segmentation; returns (masks, elapsed, name, params)."""
     t0 = time.perf_counter()
-
-    if engine_id == "mock":
-        masks, diam = mock_segment(image, n_colonies=180, delay_seconds=1.0)
-        elapsed = time.perf_counter() - t0
-        return masks, elapsed, "mock-v0", {"n_colonies": 180, "diameter_px": diam}
-
-    engine = build_engine(engine_id, use_gpu=use_gpu)
-    masks, diam = engine.segment(image)
+    engine = CellposeEngine(use_gpu=use_gpu)
+    masks, _diam = engine.segment(image)
     elapsed = time.perf_counter() - t0
     manifest = engine.describe()
-    return masks, elapsed, manifest.get("engine", engine_id), manifest
+    return masks, elapsed, manifest["engine"], manifest
 
 
 class WorkerSignals(QObject):
     started = Signal()
     progress = Signal(str)
     finished = Signal(object, object, list, float, str, dict)
-    # image, masks, metrics, elapsed, engine_name, engine_params
     error = Signal(str)
 
 
 class AnalysisWorker(QRunnable):
-    """Runs segmentation + metrics on a background thread."""
-
     def __init__(
         self,
         image_path: Path,
-        engine_id: str = "classical",
         use_gpu: bool = False,
         scale_um_per_px: float | None = None,
     ) -> None:
         super().__init__()
         self.image_path = image_path
-        self.engine_id = engine_id
         self.use_gpu = use_gpu
         self.scale_um_per_px = scale_um_per_px
         self.signals = WorkerSignals()
@@ -74,17 +63,13 @@ class AnalysisWorker(QRunnable):
         try:
             self.signals.started.emit()
             self.signals.progress.emit(f"Loading {self.image_path.name}...")
-            pil_img = Image.open(self.image_path)
-            display_image = np.array(
-                pil_img if pil_img.mode in ("RGB", "RGBA", "L") else pil_img.convert("RGB")
-            )
+            display_image = _load_image(self.image_path)
 
             self.signals.progress.emit(
-                f"Segmenting ({self.engine_id}, {'GPU' if self.use_gpu else 'CPU'})..."
+                f"Segmenting with Cellpose ({'GPU' if self.use_gpu else 'CPU'})..."
             )
-            # Engines decide their own preprocessing. Pass colour if available.
             masks, elapsed, engine_name, params = run_segmentation(
-                display_image, self.engine_id, self.use_gpu
+                display_image, self.use_gpu
             )
 
             self.signals.progress.emit("Computing metrics...")
@@ -97,9 +82,6 @@ class AnalysisWorker(QRunnable):
             self.signals.error.emit(f"{type(e).__name__}: {e}\n{traceback.format_exc()}")
 
 
-# ----------------------------- batch processing -----------------------------
-
-
 class BatchSignals(QObject):
     progress = Signal(int, int, str)
     finished = Signal(int, int, Path)
@@ -107,22 +89,18 @@ class BatchSignals(QObject):
 
 
 class BatchWorker(QRunnable):
-    """Process every image in ``input_dir`` and write per-image artefacts."""
-
     SUPPORTED = {".jpg", ".jpeg", ".png", ".tif", ".tiff", ".bmp"}
 
     def __init__(
         self,
         input_dir: Path,
         output_dir: Path,
-        engine_id: str = "classical",
         use_gpu: bool = False,
         scale_um_per_px: float | None = None,
     ) -> None:
         super().__init__()
         self.input_dir = input_dir
         self.output_dir = output_dir
-        self.engine_id = engine_id
         self.use_gpu = use_gpu
         self.scale_um_per_px = scale_um_per_px
         self.signals = BatchSignals()
@@ -147,13 +125,9 @@ class BatchWorker(QRunnable):
             for i, img_path in enumerate(images, start=1):
                 self.signals.progress.emit(i, len(images), img_path.name)
                 try:
-                    pil_img = Image.open(img_path)
-                    image = np.array(
-                        pil_img if pil_img.mode in ("RGB", "RGBA", "L")
-                        else pil_img.convert("RGB")
-                    )
+                    image = _load_image(img_path)
                     masks, elapsed, engine_name, params = run_segmentation(
-                        image, self.engine_id, self.use_gpu
+                        image, self.use_gpu
                     )
                     metrics = compute_colony_metrics(
                         masks, scale_um_per_px=self.scale_um_per_px
