@@ -461,6 +461,123 @@ a:hover { color: var(--accent-2); }
   z-index: 2;
 }
 
+/* ====== Layered liquid-glass Petri dish hero ========================== */
+.petri-stage {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  aspect-ratio: 1 / 1;
+  margin: 0 auto;
+  z-index: 2;
+  animation: float 9s ease-in-out infinite;
+  filter: drop-shadow(0 40px 70px rgba(0, 0, 0, 0.55));
+}
+html.light .petri-stage {
+  filter: drop-shadow(0 30px 50px rgba(40, 50, 70, 0.22));
+}
+
+/* 1. Background bloom — what the glass distorts and tints */
+.petri-bloom {
+  position: absolute;
+  inset: 5%;
+  border-radius: 50%;
+  z-index: 1;
+  background:
+    radial-gradient(circle at 30% 25%, rgba(255, 230, 160, 0.55), transparent 55%),
+    radial-gradient(circle at 70% 80%, rgba(122, 183, 208, 0.35), transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(240, 200, 74, 0.25), transparent 65%);
+  filter: blur(18px);
+  pointer-events: none;
+}
+html.light .petri-bloom {
+  background:
+    radial-gradient(circle at 30% 25%, rgba(245, 220, 140, 0.50), transparent 55%),
+    radial-gradient(circle at 70% 80%, rgba(80, 140, 180, 0.30), transparent 55%),
+    radial-gradient(circle at 50% 50%, rgba(220, 180, 60, 0.22), transparent 65%);
+}
+
+/* 2. Liquid-glass disc bottom — the glass body itself */
+.petri-glass {
+  position: absolute;
+  inset: 4.5%;
+  border-radius: 50%;
+  z-index: 2;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse 45% 35% at 28% 18%, rgba(255, 255, 255, 0.55), transparent 60%),
+    radial-gradient(ellipse 35% 28% at 75% 85%, rgba(255, 255, 255, 0.30), transparent 65%),
+    radial-gradient(circle at 50% 60%, rgba(240, 200, 74, 0.10), transparent 70%),
+    rgba(255, 255, 255, 0.06);
+  backdrop-filter: blur(4px) saturate(1.1);
+  -webkit-backdrop-filter: blur(4px) saturate(1.1);
+  box-shadow:
+    0 14px 40px rgba(0, 0, 0, 0.35),
+    0 0 60px rgba(240, 200, 74, 0.10),
+    inset 4px 6px 10px rgba(255, 255, 255, 0.55),
+    inset -3px -4px 10px rgba(255, 255, 255, 0.25),
+    inset 0 0 30px rgba(255, 255, 255, 0.10);
+}
+
+/* Meniscus streak — diagonal light catch on the curved surface */
+.petri-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background:
+    linear-gradient(135deg, transparent 35%, rgba(255, 255, 255, 0.28) 45%, transparent 55%);
+  filter: blur(6px);
+  pointer-events: none;
+}
+
+/* SVG-filter liquid distortion — gives the glass that subtly wavy edge */
+.petri-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.02);
+  filter: url(#petri-liquid);
+  pointer-events: none;
+}
+
+/* 3. Colonies — middle layer, sits ON the glass / agar surface */
+.petri-stage .petri-colonies {
+  position: absolute;
+  inset: 9%;
+  width: 82%;
+  height: 82%;
+  z-index: 3;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, 0.25));
+  max-width: none;
+  animation: none;
+}
+
+/* 4. Rim — top layer with transparent centre */
+.petri-stage .petri-rim {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  z-index: 4;
+  object-fit: contain;
+  pointer-events: none;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.35));
+  max-width: none;
+  animation: none;
+}
+
+/* The inline <svg> that holds the SVG <filter> definition — hide it */
+.petri-filters {
+  position: absolute;
+  width: 0;
+  height: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
 /* === Layered Petri dish hero ============================== */
 .dish-stage {
   position: relative;
@@ -1248,6 +1365,7 @@ html.light .theme-toggle .theme-icon-moon {
   }
   .hero-art > img { max-width: 360px; }
   .hero-art .dish-stage { max-width: 360px; }
+  .hero-art .petri-stage { max-width: 360px; }
   .steps {
     grid-template-columns: 1fr;
     gap: 14px;
