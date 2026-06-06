@@ -607,6 +607,200 @@ html.light .btn-hero-download:hover {
     0 1px 0 rgba(255, 255, 255, 0.6) inset;
 }
 
+/* ==================================================================
+   Smaller pill — same anatomy as btn-hero-download but for the
+   footer ('Join the community' row). Colour modifiers: telegram
+   (cool blue), whatsapp (green).
+   ================================================================== */
+.btn-pill {
+  --pill-from:    rgba(91, 142, 217, 0.95);
+  --pill-mid:     rgba(110, 180, 220, 0.85);
+  --pill-to:      rgba(91, 142, 217, 0.95);
+  --pill-border:  rgba(91, 142, 217, 0.55);
+  --pill-shadow:  rgba(91, 142, 217, 0.30);
+  --pill-text:    #ffffff;
+  --pill-subtle:  rgba(255, 255, 255, 0.75);
+  --pill-icon-bg: rgba(255, 255, 255, 0.18);
+  --pill-icon-fg: #ffffff;
+
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px 10px 14px;
+  border-radius: 12px;
+  font-family: var(--sans);
+  text-decoration: none;
+  overflow: hidden;
+  isolation: isolate;
+  border: 1.5px solid var(--pill-border);
+  background: linear-gradient(135deg, var(--pill-from) 0%, var(--pill-mid) 50%, var(--pill-to) 100%);
+  color: var(--pill-text);
+  box-shadow:
+    0 6px 18px var(--pill-shadow),
+    0 1px 0 rgba(255, 255, 255, 0.30) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.08) inset;
+  transition:
+    transform 0.30s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.30s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease;
+  cursor: pointer;
+  min-width: 220px;
+}
+.btn-pill:hover {
+  transform: translateY(-2px) scale(1.01);
+  border-color: color-mix(in srgb, var(--pill-border), white 12%);
+  box-shadow:
+    0 12px 28px var(--pill-shadow),
+    0 1px 0 rgba(255, 255, 255, 0.40) inset,
+    0 -1px 0 rgba(0, 0, 0, 0.08) inset;
+  color: var(--pill-text);
+  text-decoration: none;
+}
+.btn-pill:active { transform: translateY(0) scale(0.99); }
+
+.btn-pill-shine {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: linear-gradient(
+    105deg,
+    transparent 30%,
+    rgba(255, 255, 255, 0.45) 50%,
+    transparent 70%
+  );
+  transform: translateX(-110%);
+  transition: transform 0.85s cubic-bezier(0.22, 1, 0.36, 1);
+}
+.btn-pill:hover .btn-pill-shine { transform: translateX(110%); }
+
+.btn-pill::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background: radial-gradient(
+    ellipse at 30% 0%,
+    rgba(255, 255, 255, 0.30),
+    transparent 65%
+  );
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+.btn-pill:hover::after { opacity: 1; }
+
+.btn-pill-icon-wrap {
+  position: relative;
+  z-index: 1;
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 9px;
+  background: var(--pill-icon-bg);
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.15),
+    0 1px 0 rgba(255, 255, 255, 0.25) inset;
+  transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.btn-pill:hover .btn-pill-icon-wrap {
+  transform: rotate(-5deg) scale(1.05);
+}
+.btn-pill-icon {
+  width: 19px;
+  height: 19px;
+  color: var(--pill-icon-fg);
+}
+
+.btn-pill-text {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  line-height: 1.15;
+}
+.btn-pill-title {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: -0.1px;
+  color: var(--pill-text);
+}
+.btn-pill-subtitle {
+  font-family: var(--mono);
+  font-size: 9.5px;
+  letter-spacing: 0.10em;
+  text-transform: uppercase;
+  color: var(--pill-subtle);
+}
+
+.btn-pill-arrow {
+  position: relative;
+  z-index: 1;
+  display: inline-flex;
+  width: 16px;
+  height: 16px;
+  margin-left: 4px;
+  opacity: 0.65;
+  transition: transform 0.30s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.25s ease;
+}
+.btn-pill:hover .btn-pill-arrow {
+  opacity: 1;
+  transform: translateX(3px);
+}
+.btn-pill-arrow svg { width: 100%; height: 100%; color: var(--pill-text); }
+
+/* === Brand colour variants === */
+.btn-pill--telegram {
+  --pill-from:   #229ED9;
+  --pill-mid:    #2AABEE;
+  --pill-to:     #1B85B8;
+  --pill-border: rgba(42, 171, 238, 0.65);
+  --pill-shadow: rgba(34, 158, 217, 0.40);
+}
+.btn-pill--whatsapp {
+  --pill-from:   #25D366;
+  --pill-mid:    #1FBE5C;
+  --pill-to:     #128C7E;
+  --pill-border: rgba(37, 211, 102, 0.65);
+  --pill-shadow: rgba(37, 211, 102, 0.40);
+}
+
+/* ==================================================================
+   Footer 'Join the community' row
+   ================================================================== */
+.footer-community {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 18px;
+  padding: 22px 0 28px;
+  margin-bottom: 26px;
+  border-bottom: 1px solid var(--border);
+}
+.footer-community-label {
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+  margin-right: 4px;
+}
+.footer-community-buttons {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+@media (max-width: 560px) {
+  .footer-community { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .btn-pill { min-width: 0; width: 100%; }
+}
+
 .btn .btn-icon { width: 16px; height: 16px; }
 
 .hero-meta {
