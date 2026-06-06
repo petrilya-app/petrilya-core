@@ -102,10 +102,24 @@
         </p>
         <div class="cta-row reveal reveal-4">
           <a href="https://github.com/petrilya-app/petrilya-core/releases/latest/download/petrilya-windows.exe"
-             class="btn btn-primary"
+             class="btn-hero-download"
+             data-hero-download
              title="Petrilya for Windows (.exe, unsigned — Windows SmartScreen may warn on first launch)">
-            <svg class="btn-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-            Download for Windows
+            <span class="btn-hd-shine" aria-hidden="true"></span>
+            <span class="btn-hd-icon-wrap" aria-hidden="true">
+              <svg class="btn-hd-icon" viewBox="0 0 24 24" fill="none">
+                <path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
+            <span class="btn-hd-text">
+              <span class="btn-hd-title">Download for Windows</span>
+              <span class="btn-hd-subtitle">Windows 10 / 11 · 350 MB · v0.0.1</span>
+            </span>
+            <span class="btn-hd-arrow" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none">
+                <path d="M9 5l7 7-7 7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+              </svg>
+            </span>
           </a>
           <a href="https://github.com/petrilya-app/petrilya-core" target="_blank" rel="noopener" class="btn btn-ghost">
             <svg class="btn-icon" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 2C6.48 2 2 6.48 2 12c0 4.42 2.87 8.17 6.84 9.5.5.08.66-.23.66-.5v-1.69c-2.77.6-3.36-1.34-3.36-1.34-.46-1.16-1.11-1.47-1.11-1.47-.91-.62.07-.6.07-.6 1 .07 1.53 1.03 1.53 1.03.87 1.52 2.34 1.07 2.91.83.09-.65.35-1.09.63-1.34-2.22-.25-4.55-1.11-4.55-4.94 0-1.1.39-1.99 1.03-2.69-.1-.25-.45-1.27.1-2.65 0 0 .84-.27 2.75 1.02.79-.22 1.65-.33 2.5-.33.85 0 1.71.11 2.5.33 1.91-1.29 2.75-1.02 2.75-1.02.55 1.38.2 2.4.1 2.65.64.7 1.03 1.59 1.03 2.69 0 3.84-2.34 4.69-4.57 4.94.36.31.69.92.69 1.86V21c0 .27.16.59.67.5C19.14 20.16 22 16.42 22 12c0-5.52-4.48-10-10-10z"/></svg>
@@ -572,5 +586,6 @@ petrilya-ui</code></pre>
 
   <script src="rotator.js" defer></script>
   <script src="blobs.js" defer></script>
+  <script src="download-button.js" defer></script>
 </body>
 </html>
