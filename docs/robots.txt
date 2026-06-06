@@ -1,0 +1,8 @@
+User-agent: *
+Allow: /
+
+# Block GitHub Pages preview directories that may end up indexed
+Disallow: /new petri/
+Disallow: /petri-layers/
+
+Sitemap: https://petrilya.com/sitemap.xml

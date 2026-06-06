@@ -25,6 +25,29 @@ def _load_image(path: Path) -> np.ndarray:
     return np.array(pil.convert("RGB"))
 
 
+_ENGINE_CACHE: dict[tuple, CellposeEngine] = {}
+
+
+def _get_engine(use_gpu: bool) -> CellposeEngine:
+    """Return a cached CellposeEngine, instantiating on first call.
+
+    Building the engine loads ``cyto3`` weights and warms up PyTorch — a
+    3-5 s hit each time. Without caching every Analyze click paid that
+    cost; with the cache the model is built once per session per
+    (use_gpu) variant and reused for every subsequent run.
+
+    The cache is safe to share across QThreadPool workers because the
+    UI disables the Analyze button while a run is in progress, so
+    segment() is never called concurrently on the same engine.
+    """
+    key = (bool(use_gpu),)
+    engine = _ENGINE_CACHE.get(key)
+    if engine is None:
+        engine = CellposeEngine(use_gpu=use_gpu)
+        _ENGINE_CACHE[key] = engine
+    return engine
+
+
 def run_segmentation(
     image: np.ndarray,
     use_gpu: bool,
@@ -32,7 +55,7 @@ def run_segmentation(
 ) -> tuple[np.ndarray, float, str, dict]:
     """Run Cellpose segmentation; returns (masks, elapsed, name, manifest)."""
     t0 = time.perf_counter()
-    engine = CellposeEngine(use_gpu=use_gpu)
+    engine = _get_engine(use_gpu)
     masks, _diam = engine.segment(image, dish_roi=dish_roi)
     elapsed = time.perf_counter() - t0
     manifest = engine.describe()

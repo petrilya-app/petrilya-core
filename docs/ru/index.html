@@ -13,7 +13,42 @@
   <meta name="twitter:card" content="summary_large_image" />
   <link rel="alternate" hreflang="en" href="https://petrilya.com/" />
   <link rel="alternate" hreflang="ru" href="https://petrilya.com/ru/" />
+  <link rel="alternate" hreflang="x-default" href="https://petrilya.com/" />
+  <link rel="canonical" href="https://petrilya.com/ru/" />
   <link rel="icon" type="image/svg+xml" href="../favicon.svg" />
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareApplication",
+    "name": "Petrilya",
+    "description": "Десктопное приложение с открытым кодом — превращает фото чашки Петри со смартфона в готовый отчёт о колониях.",
+    "applicationCategory": "ScientificApplication",
+    "applicationSubCategory": "Bioimage analysis",
+    "operatingSystem": "Windows 10, Windows 11",
+    "inLanguage": "ru",
+    "softwareVersion": "0.0.1",
+    "datePublished": "2026-06-06",
+    "softwareRequirements": "Windows 10/11 x64, 8 ГБ ОЗУ",
+    "url": "https://petrilya.com/ru/",
+    "downloadUrl": "https://github.com/petrilya-app/petrilya-core/releases/latest/download/petrilya-windows.exe",
+    "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+    "offers": {
+      "@type": "Offer",
+      "price": "0",
+      "priceCurrency": "USD"
+    },
+    "publisher": {
+      "@type": "Organization",
+      "name": "Petrilya",
+      "url": "https://petrilya.com",
+      "email": "iliarogogvykh@gmail.com"
+    },
+    "sameAs": [
+      "https://github.com/petrilya-app/petrilya-core",
+      "https://pypi.org/project/petrilya/"
+    ]
+  }
+  </script>
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght,SOFT,WONK@9..144,300..700,30..100,0..1&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -141,7 +176,11 @@
           <span class="tick t-left">З · 0&nbsp;мм</span>
           <span class="tick t-right">В · 90&nbsp;мм</span>
         </div>
-        <img src="../hero-dish.png" alt="Чашка Петри с распознанными цветными колониями" />
+        <picture>
+          <source srcset="../hero-dish.webp" type="image/webp">
+          <img src="../hero-dish.png" alt="Чашка Петри с распознанными цветными колониями"
+               width="720" height="720" decoding="async" fetchpriority="high"/>
+        </picture>
         <div class="hero-art-caption">
           <span class="count">200</span>
           <span class="count-label">колоний&nbsp;·&nbsp;1,18&thinsp;с</span>
@@ -623,5 +662,6 @@ petrilya-ui</code></pre>
   <script src="../rotator.js" defer></script>
   <script src="../blobs.js" defer></script>
   <script src="../download-button.js" defer></script>
+  <script src="../pause-on-hidden.js" defer></script>
 </body>
 </html>
