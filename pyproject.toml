@@ -61,6 +61,7 @@ Issues = "https://github.com/petrilya-app/petrilya-core/issues"
 [project.scripts]
 petrilya = "petrilya.cli:main"
 petrilya-ui = "petrilya.ui.app:main"
+petrilya-screenshots = "petrilya._tools.screenshots:main"
 
 [build-system]
 requires = ["setuptools>=68", "wheel"]
