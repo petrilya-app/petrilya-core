@@ -1731,6 +1731,51 @@ html.light .theme-toggle .theme-icon-moon {
      ориентир даёт сам свайп + точки-индикаторы */
   .steps .step-link { display: none; }
 
+  /* ===== «Возможности» — тоже карусель со свайпом ===== */
+  .features .grid {
+    display: flex;
+    grid-template-columns: none;
+    gap: 14px;
+    margin: 32px 0 0;
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 4px 22px 18px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 22px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .features .grid::-webkit-scrollbar { display: none; }
+
+  .features .grid .card {
+    flex: 0 0 82%;
+    max-width: 380px;
+    min-height: 220px;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+    /* span-2 на мобиле теряет смысл — все карточки одной ширины */
+    grid-column: auto;
+  }
+  .features .grid .card.span-2 {
+    flex: 0 0 82%;
+    max-width: 380px;
+    padding: 28px 26px;
+    min-height: 220px;
+  }
+  .features .grid .card.span-2 h3 { font-size: 19px; }
+  .features .grid .card.span-2 p,
+  .features .grid .card p { max-width: none; }
+
+  /* угловой декор крупных карточек на мобиле часто вылезает за рамку
+     карточки в скролл-карусели — слегка уменьшаем */
+  .features .grid .card-decor {
+    width: 160px !important;
+    height: 160px !important;
+  }
+
   /* индикатор-точки под каруселью (создаётся скриптом ниже) */
   .steps-dots {
     display: flex;
@@ -1744,6 +1789,9 @@ html.light .theme-toggle .theme-icon-moon {
     border-radius: 50%;
     background: var(--border);
     transition: background-color 0.25s ease, transform 0.25s ease;
+    border: none;
+    padding: 0;
+    cursor: pointer;
   }
   .steps-dot.is-active {
     background: var(--accent-2);
