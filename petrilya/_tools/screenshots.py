@@ -43,6 +43,10 @@ from pathlib import Path
 
 # HiDPI MUST be set before QApplication is constructed. We pre-seed the
 # env var here so an early import of PySide6 elsewhere can't break it.
+# QT_ENABLE_HIGHDPI_SCALING=0 disables system display scaling (Windows 125%)
+# so QT_SCALE_FACTOR multiplies cleanly — otherwise you get 2 × 1.25 = 2.5x.
+os.environ.setdefault("QT_ENABLE_HIGHDPI_SCALING", "0")
+os.environ.setdefault("QT_AUTO_SCREEN_SCALE_FACTOR", "0")
 os.environ.setdefault("QT_SCALE_FACTOR", "2")
 
 import numpy as np
@@ -52,26 +56,39 @@ REPO = Path(__file__).resolve().parents[2]   # …/petrilya/_tools/.. → repo
 DOCS = REPO / "docs"
 
 # Folders the script will hunt for a sample photo when --image isn't passed.
+# Restricted to the repo so we never accidentally pick up a CS2 screenshot
+# from the user's desktop or similar unrelated images.
 SAMPLE_DIRS: tuple[Path, ...] = (
     REPO / "tests" / "samples",
+    REPO,                           # numbered dish photos at repo root
     REPO / "docs",
-    REPO.parent,            # one level up — handy during dev
+)
+
+# Filenames in the search dirs that are NOT dish photos (website assets, etc).
+_NOT_A_DISH_HINTS = (
+    "screenshot", "hero-dish", "og-image", "favicon",
+    "colony-", "agar.png", "dish.png",  # decorative website images
 )
 
 
 # ====================================================================== sample
 def find_sample_image() -> Path | None:
-    """Pick the largest photogenic candidate from the known sample dirs."""
+    """Pick the largest dish-like candidate from the repo's sample dirs."""
+    seen: set[Path] = set()
     candidates: list[Path] = []
     for d in SAMPLE_DIRS:
         if not d.is_dir():
             continue
         for p in d.iterdir():
-            if p.suffix.lower() in {".jpg", ".jpeg", ".png", ".tif", ".tiff"} \
-                    and "screenshot" not in p.name.lower() \
-                    and "hero-dish" not in p.name.lower() \
-                    and "og-image" not in p.name.lower():
-                candidates.append(p)
+            if p in seen or p.is_dir():
+                continue
+            seen.add(p)
+            if p.suffix.lower() not in {".jpg", ".jpeg", ".png", ".tif", ".tiff"}:
+                continue
+            low = p.name.lower()
+            if any(h in low for h in _NOT_A_DISH_HINTS):
+                continue
+            candidates.append(p)
     # bias toward bigger files — those are usually full-resolution dish photos
     candidates.sort(key=lambda p: p.stat().st_size, reverse=True)
     return candidates[0] if candidates else None
