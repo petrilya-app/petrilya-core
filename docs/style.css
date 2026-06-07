@@ -58,7 +58,14 @@ html, body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: background-color 0.3s ease, color 0.25s ease;
+  /* prevent any rogue child (long heading, hero art shadow, blob layer)
+     from triggering horizontal scroll on narrow viewports */
+  overflow-x: hidden;
+  max-width: 100%;
 }
+
+/* media-friendly defaults so wide images can never push layout */
+img, picture, svg, video, canvas { max-width: 100%; height: auto; }
 html.light body::after {
   opacity: 0.025;
   mix-blend-mode: multiply;
@@ -300,13 +307,18 @@ a:hover { color: var(--accent-2); }
 
 .hero-text h1 {
   font-family: var(--display);
-  font-size: clamp(48px, 6.5vw, 84px);
-  line-height: 1.02;
+  font-size: clamp(34px, 6.5vw, 84px);
+  line-height: 1.04;
   letter-spacing: -2.5px;
   margin: 0 0 28px;
   font-weight: 400;
   /* Fraunces variation axes — give the heading a softer, hand-set feel */
   font-variation-settings: "opsz" 144, "SOFT" 70, "WONK" 0;
+  /* allow Russian long lines like 'за секунды, а не часы.' to break
+     cleanly on narrow viewports instead of overflowing the viewport */
+  overflow-wrap: break-word;
+  word-break: normal;
+  hyphens: auto;
 }
 .hero-text h1 .quiet {
   display: block;
@@ -1643,13 +1655,15 @@ html.light .theme-toggle .theme-icon-moon {
 .lang-active { background: rgba(240, 200, 74, 0.10); }
 .lang-active .lang-label { color: var(--accent-2); }
 
-/* =================== Mobile =================== */
+/* =================== Responsive =================== */
+/* Tablet / small laptop */
 @media (max-width: 960px) {
   .hero-grid {
     grid-template-columns: 1fr;
     gap: 40px;
     margin-top: 30px;
     min-height: 0;
+    padding: 0 24px;
   }
   .hero-art > img { max-width: 360px; }
   .hero-art .dish-stage { max-width: 360px; }
@@ -1667,11 +1681,108 @@ html.light .theme-toggle .theme-icon-moon {
   .card.span-2 { grid-column: span 2; }
   .nav-links a { margin-left: 18px; font-size: 13px; }
 }
-@media (max-width: 560px) {
+
+/* Large phone */
+@media (max-width: 768px) {
+  .container { padding: 0 22px; }
+  .hero-grid { padding: 0 22px; gap: 32px; }
+  .hero { padding-bottom: 80px; }
+  .hero-text h1 {
+    font-size: clamp(34px, 7.6vw, 60px);
+    letter-spacing: -1.4px;
+  }
+  .how h2, .features h2, .download h2, .for-labs h2 {
+    font-size: clamp(28px, 5.6vw, 44px);
+    letter-spacing: -0.8px;
+  }
+  .lead, .section-lead, .download .lead { font-size: 16px; }
+  .cta-row { gap: 12px; }
+  .btn-hero-download { padding: 12px 18px 12px 14px; gap: 12px; }
+}
+
+/* Phone */
+@media (max-width: 600px) {
   .grid { grid-template-columns: 1fr; }
   .card.span-2 { grid-column: span 1; }
   .nav-links a:not(.lang-current):not(.lang-option) { display: none; }
   .lang-dropdown { margin-left: 0; }
-  .container { padding: 0 20px; }
-  .nav { padding: 18px 20px; }
+  .container { padding: 0 18px; }
+  .nav { padding: 16px 18px; }
+  .hero-grid { padding: 0 18px; margin-top: 16px; }
+  .hero { padding-bottom: 60px; }
+
+  .hero-text h1 {
+    font-size: clamp(30px, 8.4vw, 48px);
+    letter-spacing: -0.8px;
+    line-height: 1.08;
+    margin-bottom: 20px;
+  }
+  .lead { margin-bottom: 24px; }
+  .section-lead { margin-bottom: 36px; }
+  .hero-art > img, .hero-art .dish-stage { max-width: 320px; }
+
+  /* CTA: stack and stretch full-width — works on every phone */
+  .cta-row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .cta-row > .btn,
+  .cta-row > .btn-hero-download { width: 100%; justify-content: center; }
+  .btn-hero-download {
+    flex-wrap: nowrap;
+    min-width: 0;
+  }
+  .btn-hd-text { min-width: 0; flex: 1; }
+  .btn-hd-title, .btn-hd-subtitle {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .hero-meta { gap: 6px; }
+  .badge { font-size: 10.5px; padding: 4px 9px; }
+}
+
+/* Small phone */
+@media (max-width: 480px) {
+  .container,
+  .hero-grid { padding: 0 14px; }
+  .nav { padding: 14px 14px; }
+
+  .hero-text h1 {
+    font-size: clamp(26px, 9vw, 40px);
+    letter-spacing: -0.4px;
+    /* punch line is the longest — let it break anywhere if needed */
+  }
+  .hero-text h1 .punch { overflow-wrap: anywhere; }
+
+  .how h2, .features h2, .download h2, .for-labs h2 {
+    font-size: clamp(24px, 7vw, 34px);
+    letter-spacing: -0.4px;
+  }
+  .hero-art > img, .hero-art .dish-stage { max-width: 100%; }
+
+  /* nav: logo + theme + lang only — keep them on one row, no wrap */
+  .nav { flex-wrap: nowrap; gap: 8px; }
+  .nav-brand span { font-size: 15px; }
+
+  .spec-marker, .eyebrow { font-size: 10px; letter-spacing: 0.16em; }
+  .code { padding: 18px 16px; font-size: 12px; }
+
+  .footer-row { gap: 14px; }
+  .footer-row > div:last-child { gap: 18px; flex-wrap: wrap; }
+}
+
+/* Tiny phone (iPhone SE 1st gen, old Androids) */
+@media (max-width: 380px) {
+  .container,
+  .hero-grid { padding: 0 12px; }
+
+  .hero-text h1 {
+    font-size: clamp(24px, 9.5vw, 32px);
+    letter-spacing: -0.2px;
+  }
+
+  .btn { padding: 11px 16px; font-size: 13px; }
+  .btn-hero-download { padding: 11px 14px 11px 12px; gap: 10px; }
+  .btn-hd-icon-wrap { width: 32px; height: 32px; }
+  .btn-hd-title { font-size: 13px; }
+  .btn-hd-subtitle { font-size: 9.5px; }
 }
