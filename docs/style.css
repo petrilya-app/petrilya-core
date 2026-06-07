@@ -1645,6 +1645,17 @@ html.light .download {
 }
 .download .lead { font-size: 17px; margin-bottom: 32px; }
 
+/* Лид над snippet-ом «Собрать из исходников» — мельче и приглушённее,
+   чтобы Windows-CTA сверху оставался главным акцентом. */
+.download-sub-lead {
+  margin: 56px 0 14px;
+  font-family: var(--mono);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--text-mute);
+}
+
 .code {
   background: var(--bg);
   border: 1px solid var(--border);

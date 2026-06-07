@@ -571,24 +571,33 @@
       <span class="eyebrow">GET STARTED</span>
       <h2>Download</h2>
       <p class="lead">
-        Petrilya is in <strong>pre-alpha</strong>. There's no installer yet — the project is being built in public. To try the in-progress build, clone the repository.
+        Petrilya is in <strong>pre-alpha</strong>. A Windows installer is ready — for macOS and Linux, build from source.
       </p>
-      <pre class="code"><code>git clone https://github.com/petrilya-app/petrilya-core.git
-cd petrilya-core
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -e .
-petrilya-ui</code></pre>
+
       <p>
-        <a href="https://github.com/petrilya-app/petrilya-core/releases" class="btn btn-primary" target="_blank" rel="noopener">
+        <a href="https://github.com/petrilya-app/petrilya-core/releases/latest/download/petrilya-windows.exe"
+           class="btn btn-primary" target="_blank" rel="noopener"
+           title="Petrilya for Windows 10 / 11 — unsigned .exe, SmartScreen may warn on first launch">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg>
+          Download for Windows
+        </a>
+        <a href="https://github.com/petrilya-app/petrilya-core/releases" class="btn btn-ghost" target="_blank" rel="noopener">
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Releases on GitHub
+          All releases
         </a>
         <a href="https://github.com/petrilya-app/petrilya-core/issues" class="btn btn-ghost" target="_blank" rel="noopener">
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           Report an issue
         </a>
       </p>
+
+      <p class="download-sub-lead">Build from source — for macOS, Linux, or development:</p>
+      <pre class="code"><code>git clone https://github.com/petrilya-app/petrilya-core.git
+cd petrilya-core
+python -m venv .venv
+source .venv/bin/activate   # Windows: .\.venv\Scripts\Activate.ps1
+pip install -e .
+petrilya-ui</code></pre>
     </div>
   </section>
 

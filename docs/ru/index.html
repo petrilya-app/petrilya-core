@@ -560,24 +560,33 @@
       <span class="eyebrow">НАЧАТЬ</span>
       <h2>Скачать</h2>
       <p class="lead">
-        Petrilya сейчас в стадии <strong>pre-alpha</strong>. Установщика пока нет — проект разрабатывается в открытую. Чтобы попробовать текущую сборку, склонируйте репозиторий.
+        Petrilya сейчас в стадии <strong>pre-alpha</strong>. Для Windows есть готовый установщик — для macOS и Linux пока соберите из исходников.
       </p>
-      <pre class="code"><code>git clone https://github.com/petrilya-app/petrilya-core.git
-cd petrilya-core
-python -m venv .venv
-.\.venv\Scripts\Activate.ps1
-pip install -e .
-petrilya-ui</code></pre>
+
       <p>
-        <a href="https://github.com/petrilya-app/petrilya-core/releases" class="btn btn-primary" target="_blank" rel="noopener">
+        <a href="https://github.com/petrilya-app/petrilya-core/releases/latest/download/petrilya-windows.exe"
+           class="btn btn-primary" target="_blank" rel="noopener"
+           title="Petrilya для Windows 10 / 11 — .exe не подписан, SmartScreen может предупредить">
+          <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v12m0 0l-4-4m4 4l4-4M5 20h14"/></svg>
+          Скачать для Windows
+        </a>
+        <a href="https://github.com/petrilya-app/petrilya-core/releases" class="btn btn-ghost" target="_blank" rel="noopener">
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-          Релизы на GitHub
+          Все релизы
         </a>
         <a href="https://github.com/petrilya-app/petrilya-core/issues" class="btn btn-ghost" target="_blank" rel="noopener">
           <svg class="btn-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
           Сообщить об ошибке
         </a>
       </p>
+
+      <p class="download-sub-lead">Собрать из исходников — для macOS, Linux или разработки:</p>
+      <pre class="code"><code>git clone https://github.com/petrilya-app/petrilya-core.git
+cd petrilya-core
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1   # macOS/Linux: source .venv/bin/activate
+pip install -e .
+petrilya-ui</code></pre>
     </div>
   </section>
 
