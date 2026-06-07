@@ -835,7 +835,13 @@ html.is-hidden .step-link::after {
 @media (max-width: 560px) {
   .footer-community { flex-direction: column; align-items: flex-start; gap: 14px; }
   .btn-pill { min-width: 0; width: 100%; }
-  .footer-community-buttons { flex-direction: column; align-items: flex-start; gap: 14px; }
+  .footer-community-buttons {
+    flex-direction: column;
+    align-items: stretch;     /* full-width pills in the column */
+    gap: 12px;
+    width: 100%;
+  }
+  .community-link { width: 100%; min-width: 0; }
 }
 
 /* ============================================================
@@ -857,6 +863,11 @@ html.is-hidden .step-link::after {
   border-radius: var(--radius);
   background: rgba(255, 255, 255, 0.015);
   position: relative;
+  /* Same width regardless of label/meta length so the row stays tidy
+     both inline (desktop) and stacked (mobile). The trailing arrow
+     anchors to the right edge via margin-left:auto on ::after. */
+  min-width: 260px;
+  box-sizing: border-box;
   transition:
     color 0.18s ease,
     border-color 0.18s ease,
@@ -908,7 +919,8 @@ html.light .community-link:hover { background: rgba(184, 132, 42, 0.08); }
   content: "";
   width: 10px;
   height: 10px;
-  margin-left: 2px;
+  /* push arrow to the right edge so different-length labels stay aligned */
+  margin-left: auto;
   background-color: currentColor;
   opacity: 0.45;
   -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M5 11l6-6M6 5h5v5'/></svg>");
