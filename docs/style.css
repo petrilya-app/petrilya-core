@@ -1698,7 +1698,61 @@ html.light .theme-toggle .theme-icon-moon {
   .lead, .section-lead, .download .lead { font-size: 16px; }
   .cta-row { gap: 12px; }
   .btn-hero-download { padding: 12px 18px 12px 14px; gap: 12px; }
+
+  /* ===== «Как это работает» — горизонтальная карусель со свайпом ===== */
+  .steps {
+    display: flex;
+    grid-template-columns: none;            /* отменяем grid из десктопа */
+    gap: 14px;
+    margin: 32px 0 0;
+    /* full-bleed: вырываемся из .container, чтобы карточки доезжали
+       до краёв экрана и было видно «peek» соседней карточки */
+    margin-left: calc(50% - 50vw);
+    margin-right: calc(50% - 50vw);
+    padding: 4px 22px 18px;
+    overflow-x: auto;
+    overflow-y: hidden;
+    scroll-snap-type: x mandatory;
+    scroll-padding-left: 22px;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;                  /* Firefox */
+  }
+  .steps::-webkit-scrollbar { display: none; } /* Safari/Chrome */
+
+  .steps .step {
+    flex: 0 0 86%;                          /* 86% ширины + peek соседа */
+    max-width: 420px;
+    scroll-snap-align: start;
+    scroll-snap-stop: always;
+  }
+
+  /* стрелки-разделители между шагами на десктопе — на мобиле не нужны,
+     ориентир даёт сам свайп + точки-индикаторы */
+  .steps .step-link { display: none; }
+
+  /* индикатор-точки под каруселью (создаётся скриптом ниже) */
+  .steps-dots {
+    display: flex;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 14px;
+  }
+  .steps-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--border);
+    transition: background-color 0.25s ease, transform 0.25s ease;
+  }
+  .steps-dot.is-active {
+    background: var(--accent-2);
+    transform: scale(1.25);
+  }
 }
+
+/* десктоп: индикатор скрыт по умолчанию */
+.steps-dots { display: none; }
 
 /* Phone */
 @media (max-width: 600px) {
