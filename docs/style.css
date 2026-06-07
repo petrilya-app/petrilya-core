@@ -29,6 +29,10 @@
 
 html {
   color-scheme: dark;
+  /* anchor links (#how, #features, #download) shouldn't tuck the
+     section title under the fixed nav */
+  scroll-padding-top: 76px;
+  scroll-behavior: smooth;
 }
 html.light {
   color-scheme: light;
@@ -259,16 +263,60 @@ a:hover { color: var(--accent-2); }
   background: linear-gradient(90deg, transparent, var(--border), transparent);
 }
 
+/* ===== Sticky nav =====
+ * Pinned to the viewport top so it stays reachable on long pages.
+ * The hero already houses <nav> inside <header class="hero">, so we
+ * pull it out of normal flow with `position: fixed` and compensate
+ * with body padding-top so nothing hides under it.
+ * The bar starts transparent over the hero — once the user scrolls
+ * a few pixels, `.is-scrolled` (set by JS) turns on a translucent
+ * dark plate + hairline bottom border for legibility over content.
+ * ====================================================== */
 .nav {
-  max-width: var(--maxw);
-  margin: 0 auto;
-  padding: 22px 32px;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  /* Centre inner contents at --maxw while the bar stays full-bleed
+     for the background plate. No wrapper div needed. */
+  padding-block: 14px;
+  padding-inline: max(32px, calc((100% - var(--maxw)) / 2));
   display: flex;
   justify-content: space-between;
   align-items: center;
-  position: relative;
-  z-index: 2;
+  z-index: 50;
+  background: transparent;
+  border-bottom: 1px solid transparent;
+  transition:
+    background-color 0.25s ease,
+    border-color 0.25s ease,
+    backdrop-filter 0.25s ease,
+    padding 0.25s ease;
 }
+
+/* Scrolled state — translucent plate so content underneath shows
+ * through but text stays legible. backdrop-filter is progressive
+ * enhancement; the rgba fallback alone is enough on its own. */
+.nav.is-scrolled {
+  background: rgba(10, 13, 18, 0.72);
+  border-bottom-color: var(--border-soft);
+  backdrop-filter: saturate(140%) blur(14px);
+  -webkit-backdrop-filter: saturate(140%) blur(14px);
+  padding-block: 10px;
+}
+html.light .nav.is-scrolled {
+  background: rgba(246, 244, 236, 0.78);
+  border-bottom-color: var(--border);
+}
+
+/* Compensate fixed nav — push the hero (and everything else) down
+ * by the nav height so content doesn't tuck under it. */
+body { padding-top: 68px; }
+@media (max-width: 600px) { body { padding-top: 60px; } }
+@media (max-width: 480px) { body { padding-top: 56px; } }
 
 .brand {
   display: flex;
@@ -2042,7 +2090,8 @@ html.light .theme-toggle .theme-icon-moon {
   .lang-dropdown { margin-left: 16px; }
   .theme-toggle  { margin-left: 0; }
   .container { padding: 0 18px; }
-  .nav { padding: 16px 18px; }
+  .nav { padding-block: 12px; padding-inline: 18px; }
+  .nav.is-scrolled { padding-block: 9px; }
   .hero-grid { padding: 0 18px; margin-top: 16px; }
   .hero { padding-bottom: 60px; }
 
@@ -2097,7 +2146,8 @@ html.light .theme-toggle .theme-icon-moon {
 @media (max-width: 480px) {
   .container,
   .hero-grid { padding: 0 14px; }
-  .nav { padding: 14px 14px; }
+  .nav { padding-block: 10px; padding-inline: 14px; }
+  .nav.is-scrolled { padding-block: 8px; }
 
   .hero-text h1 {
     font-size: clamp(26px, 9vw, 40px);
