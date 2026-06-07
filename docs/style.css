@@ -146,6 +146,11 @@ body::after {
 
 main, section, header, footer { position: relative; z-index: 1; }
 
+/* Hero hosts the fixed .nav. The bar's own z-index (50) only stacks
+ * inside hero's context, so the hero itself must outrank sibling
+ * sections — otherwise later sections paint over the sticky nav. */
+.hero { z-index: 60; }
+
 /* === Background colony blobs (parallax + idle drift) ===
  * Injected by blobs.js. A fixed layer behind every section
  * holds organic SVG blobs that scroll-parallax at varying
