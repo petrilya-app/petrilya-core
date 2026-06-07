@@ -20,6 +20,7 @@ from PySide6.QtGui import (
     QWheelEvent,
 )
 from PySide6.QtWidgets import (
+    QGraphicsBlurEffect,
     QGraphicsEllipseItem,
     QGraphicsItem,
     QGraphicsLineItem,
@@ -169,9 +170,12 @@ class ImageCanvas(QGraphicsView):
         # image. split_x is in scene/pixmap coordinates.
         self._split_visible: bool = False
         self._split_x: float | None = None
+        self._split_line_shadow_item: QGraphicsLineItem | None = None
         self._split_line_item: QGraphicsLineItem | None = None
+        self._split_handle_shadow_item: QGraphicsEllipseItem | None = None
         self._split_handle_item: QGraphicsEllipseItem | None = None
         self._split_handle_inner: QGraphicsEllipseItem | None = None
+        self._split_handle_ring_item: QGraphicsEllipseItem | None = None
         self._split_arrow_item = None
         self._split_dragging: bool = False
 
@@ -193,9 +197,12 @@ class ImageCanvas(QGraphicsView):
         self._roi_circle_item = None
         self._roi_center_handle = None
         self._roi_edge_handle = None
+        self._split_line_shadow_item = None
         self._split_line_item = None
+        self._split_handle_shadow_item = None
         self._split_handle_item = None
         self._split_handle_inner = None
+        self._split_handle_ring_item = None
         self._split_arrow_item = None
         self._highlight_overlay_item = None
         self._highlight_label = None
@@ -336,49 +343,95 @@ class ImageCanvas(QGraphicsView):
 
     def _clear_split_items(self) -> None:
         for item in (
+            self._split_line_shadow_item,
             self._split_line_item,
+            self._split_handle_shadow_item,
             self._split_handle_item,
             self._split_handle_inner,
+            self._split_handle_ring_item,
             self._split_arrow_item,
         ):
             if item is not None and item.scene() is self._scene:
                 self._scene.removeItem(item)
+        self._split_line_shadow_item = None
         self._split_line_item = None
+        self._split_handle_shadow_item = None
         self._split_handle_item = None
         self._split_handle_inner = None
+        self._split_handle_ring_item = None
         self._split_arrow_item = None
 
     def _draw_split(self) -> None:
+        """Render the before/after divider line + draggable handle.
+
+        Composition (bottom → top):
+          1. Soft dark line behind the white one — gives the divider
+             definition on bright dish photos.
+          2. Crisp white line on top.
+          3. Soft blurred drop-shadow ellipse under the handle.
+          4. Solid white handle (clean canvas).
+          5. Thin amber accent ring — brand colour without taking over.
+          6. Dark chevrons inside, signalling 'draggable'.
+
+        Everything in the handle uses ItemIgnoresTransformations so the
+        slider stays at a constant viewport size regardless of zoom.
+        """
         if self._base_item is None or self._split_x is None:
             return
         h = self._base_item.pixmap().height()
+        sx = self._split_x
 
-        # Cosmetic white line that stays 2 px regardless of zoom
-        line_pen = QPen(QColor(255, 255, 255), 0)
-        line_pen.setCosmetic(True)
-        line_pen.setWidth(2)
-        line_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+        # ---------------------------------------------------------- 1) line
+        # Shadow line behind: subtle dark stripe so the white divider
+        # stays visible over the lightest agar areas without looking neon.
+        if self._split_line_shadow_item is None:
+            self._split_line_shadow_item = QGraphicsLineItem()
+            self._split_line_shadow_item.setZValue(9)
+            self._scene.addItem(self._split_line_shadow_item)
+        shadow_pen = QPen(QColor(0, 0, 0, 110), 0)
+        shadow_pen.setCosmetic(True)
+        shadow_pen.setWidthF(3.5)
+        shadow_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
+        self._split_line_shadow_item.setPen(shadow_pen)
+        self._split_line_shadow_item.setLine(sx, 0, sx, h)
 
+        # Main white line — slightly thinner & softer than before.
         if self._split_line_item is None:
             self._split_line_item = QGraphicsLineItem()
             self._split_line_item.setZValue(10)
             self._scene.addItem(self._split_line_item)
+        line_pen = QPen(QColor(255, 255, 255, 235), 0)
+        line_pen.setCosmetic(True)
+        line_pen.setWidthF(1.5)
+        line_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
         self._split_line_item.setPen(line_pen)
-        self._split_line_item.setLine(self._split_x, 0, self._split_x, h)
+        self._split_line_item.setLine(sx, 0, sx, h)
 
-        # Round draggable handle at the vertical centre of the image.
-        # ItemIgnoresTransformations keeps it at constant viewport size.
-        handle_radius_view = self.SPLIT_HIT_RADIUS_VIEW
-        handle_rect = QRectF(
-            -handle_radius_view, -handle_radius_view,
-            handle_radius_view * 2, handle_radius_view * 2,
-        )
-        inner_rect = QRectF(
-            -handle_radius_view + 3, -handle_radius_view + 3,
-            (handle_radius_view - 3) * 2, (handle_radius_view - 3) * 2,
-        )
-        handle_pos = QPointF(self._split_x, h / 2)
+        # -------------------------------------------------------- 2) handle
+        r = 22.0                          # was 28 — smaller & more refined
+        handle_pos = QPointF(sx, h / 2)
 
+        # Soft drop shadow — a slightly larger dark ellipse offset down,
+        # blurred via QGraphicsBlurEffect. Works with IgnoresTransforms.
+        if self._split_handle_shadow_item is None:
+            self._split_handle_shadow_item = QGraphicsEllipseItem()
+            self._split_handle_shadow_item.setZValue(10)
+            self._split_handle_shadow_item.setFlag(
+                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
+            )
+            self._scene.addItem(self._split_handle_shadow_item)
+            blur = QGraphicsBlurEffect()
+            blur.setBlurRadius(10)
+            self._split_handle_shadow_item.setGraphicsEffect(blur)
+        self._split_handle_shadow_item.setPen(QPen(Qt.PenStyle.NoPen))
+        self._split_handle_shadow_item.setBrush(QBrush(QColor(0, 0, 0, 130)))
+        sh_r = r + 1.5
+        self._split_handle_shadow_item.setRect(QRectF(
+            -sh_r, -sh_r + 3.0, sh_r * 2, sh_r * 2,
+        ))
+        self._split_handle_shadow_item.setPos(handle_pos)
+
+        # Main white handle — clean, no fill colour.
         if self._split_handle_item is None:
             self._split_handle_item = QGraphicsEllipseItem()
             self._split_handle_item.setZValue(11)
@@ -386,29 +439,32 @@ class ImageCanvas(QGraphicsView):
                 QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
             )
             self._scene.addItem(self._split_handle_item)
-        # Outer ring: white with subtle shadow
-        outer_pen = QPen(QColor(40, 50, 70, 180), 1)
-        outer_pen.setCosmetic(True)
-        self._split_handle_item.setPen(outer_pen)
-        self._split_handle_item.setBrush(QBrush(QColor(255, 255, 255, 240)))
-        self._split_handle_item.setRect(handle_rect)
+        self._split_handle_item.setPen(QPen(Qt.PenStyle.NoPen))
+        self._split_handle_item.setBrush(QBrush(QColor(255, 255, 255, 250)))
+        self._split_handle_item.setRect(QRectF(-r, -r, r * 2, r * 2))
         self._split_handle_item.setPos(handle_pos)
 
-        if self._split_handle_inner is None:
-            self._split_handle_inner = QGraphicsEllipseItem()
-            self._split_handle_inner.setZValue(12)
-            self._split_handle_inner.setFlag(
+        # Thin amber accent ring on top of the white handle — keeps the
+        # brand colour without making the whole control look like a button.
+        if self._split_handle_ring_item is None:
+            self._split_handle_ring_item = QGraphicsEllipseItem()
+            self._split_handle_ring_item.setZValue(12)
+            self._split_handle_ring_item.setFlag(
                 QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
             )
-            self._scene.addItem(self._split_handle_inner)
-        # Inner dot: brand amber so the handle reads as 'active' & branded
-        self._split_handle_inner.setPen(QPen(Qt.PenStyle.NoPen))
-        self._split_handle_inner.setBrush(QBrush(QColor(240, 200, 74)))
-        self._split_handle_inner.setRect(inner_rect)
-        self._split_handle_inner.setPos(handle_pos)
+            self._scene.addItem(self._split_handle_ring_item)
+        ring_pen = QPen(QColor(240, 200, 74, 230), 0)
+        ring_pen.setCosmetic(True)
+        ring_pen.setWidthF(1.6)
+        self._split_handle_ring_item.setPen(ring_pen)
+        self._split_handle_ring_item.setBrush(QBrush(Qt.GlobalColor.transparent))
+        # Inset by 1.5 px so the ring sits just inside the handle edge.
+        self._split_handle_ring_item.setRect(QRectF(
+            -r + 1.5, -r + 1.5, (r - 1.5) * 2, (r - 1.5) * 2,
+        ))
+        self._split_handle_ring_item.setPos(handle_pos)
 
-        # Two little arrows ← → on the inner dot, indicating draggable.
-        # Built as a tiny QGraphicsPathItem.
+        # Chevrons ‹  › — slimmer & darker for clean contrast on white.
         from PySide6.QtGui import QPainterPath
         from PySide6.QtWidgets import QGraphicsPathItem
 
@@ -420,15 +476,15 @@ class ImageCanvas(QGraphicsView):
             )
             self._scene.addItem(self._split_arrow_item)
         path = QPainterPath()
-        # Left chevron
-        path.moveTo(-7, -4)
-        path.lineTo(-11, 0)
-        path.lineTo(-7, 4)
-        # Right chevron
-        path.moveTo(7, -4)
-        path.lineTo(11, 0)
-        path.lineTo(7, 4)
-        arrow_pen = QPen(QColor(40, 50, 70, 230), 2)
+        path.moveTo(-5.0, -5.0)
+        path.lineTo(-9.0, 0.0)
+        path.lineTo(-5.0, 5.0)
+        path.moveTo(5.0, -5.0)
+        path.lineTo(9.0, 0.0)
+        path.lineTo(5.0, 5.0)
+        arrow_pen = QPen(QColor(35, 45, 65, 240), 0)
+        arrow_pen.setCosmetic(True)
+        arrow_pen.setWidthF(1.8)
         arrow_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
         arrow_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
         self._split_arrow_item.setPen(arrow_pen)

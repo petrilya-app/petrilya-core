@@ -185,6 +185,16 @@ def boot_and_grab(image_arr: np.ndarray, size: tuple[int, int]) -> Image.Image:
         win.canvas.fit_to_window()
     app.processEvents()
 
+    # Enable before/after split at 60% — shows off the slider in the shot.
+    if hasattr(win.canvas, "set_split_visible") and hasattr(win.canvas, "set_split_x"):
+        try:
+            iw = image_arr.shape[1]
+            win.canvas.set_split_x(iw * 0.55)
+            win.canvas.set_split_visible(True)
+        except Exception:
+            pass
+    app.processEvents()
+
     pix = win.grab()
     qimg = pix.toImage().convertToFormat(QImage.Format.Format_RGBA8888)
     w, h = qimg.width(), qimg.height()
