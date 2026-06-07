@@ -1823,7 +1823,10 @@ html.light .theme-toggle .theme-icon-moon {
   .grid { grid-template-columns: 1fr; }
   .card.span-2 { grid-column: span 1; }
   .nav-links a:not(.lang-current):not(.lang-option) { display: none; }
-  .lang-dropdown { margin-left: 0; }
+  /* На мобиле остаются только theme-toggle и lang-dropdown — даём им
+     дышать, чтобы между луной и RU был ощутимый зазор. */
+  .lang-dropdown { margin-left: 16px; }
+  .theme-toggle  { margin-left: 0; }
   .container { padding: 0 18px; }
   .nav { padding: 16px 18px; }
   .hero-grid { padding: 0 18px; margin-top: 16px; }
