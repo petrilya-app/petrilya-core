@@ -145,8 +145,9 @@ class MainWindow(QMainWindow):
 
         # ---- analyze button ----
         self.analyze_btn = QPushButton("Analyze")
+        self.analyze_btn.setObjectName("primaryButton")
         self.analyze_btn.setEnabled(False)
-        self.analyze_btn.setMinimumHeight(40)
+        self.analyze_btn.setMinimumHeight(44)
         self.analyze_btn.clicked.connect(self.run_analysis)
         right_layout.addWidget(self.analyze_btn)
 
@@ -237,9 +238,7 @@ class MainWindow(QMainWindow):
 
         # ---- summary ----
         self.summary_label = QLabel("No image loaded.")
-        self.summary_label.setStyleSheet(
-            "padding:8px; background:#2a2a2a; border-radius:4px;"
-        )
+        self.summary_label.setObjectName("summaryLabel")
         self.summary_label.setWordWrap(True)
         right_layout.addWidget(self.summary_label)
 
@@ -258,17 +257,21 @@ class MainWindow(QMainWindow):
 
         # ---- export buttons row ----
         exports = QHBoxLayout()
+        exports.setSpacing(8)
         self.csv_btn = QPushButton("CSV")
+        self.csv_btn.setObjectName("ghostButton")
         self.csv_btn.setEnabled(False)
         self.csv_btn.clicked.connect(self.export_csv)
         exports.addWidget(self.csv_btn)
 
         self.pdf_btn = QPushButton("PDF")
+        self.pdf_btn.setObjectName("ghostButton")
         self.pdf_btn.setEnabled(False)
         self.pdf_btn.clicked.connect(self.export_pdf)
         exports.addWidget(self.pdf_btn)
 
         self.json_btn = QPushButton("JSON")
+        self.json_btn.setObjectName("ghostButton")
         self.json_btn.setEnabled(False)
         self.json_btn.clicked.connect(self.export_json)
         exports.addWidget(self.json_btn)

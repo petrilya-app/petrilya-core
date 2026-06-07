@@ -136,10 +136,12 @@ def boot_and_grab(image_arr: np.ndarray, size: tuple[int, int]) -> Image.Image:
     from PySide6.QtWidgets import QApplication
 
     from petrilya.metrics.colony import compute_colony_metrics
+    from petrilya.ui.app import configure_app
     from petrilya.ui.main_window import MainWindow
     from petrilya.ui.mock_engine import mock_segment
 
     app = QApplication.instance() or QApplication(sys.argv)
+    configure_app(app)
 
     win = MainWindow()
     win.resize(*size)

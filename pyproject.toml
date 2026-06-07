@@ -69,3 +69,6 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools.packages.find]
 include = ["petrilya*"]
+
+[tool.setuptools.package-data]
+"petrilya.ui" = ["*.qss"]

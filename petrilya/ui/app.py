@@ -3,32 +3,40 @@
 from __future__ import annotations
 
 import sys
+from pathlib import Path
 
+from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from petrilya.ui.main_window import MainWindow
 
+_STYLE_QSS = Path(__file__).with_name("style.qss")
+
+
+def configure_app(app: QApplication) -> None:
+    """Apply Petrilya branding to a QApplication.
+
+    Shared between the production entry point and the marketing-screenshot
+    tool so both render with the same fonts and stylesheet.
+    """
+    app.setApplicationName("Petrilya")
+    app.setApplicationDisplayName("Petrilya")
+    app.setOrganizationName("Petrilya")
+    app.setStyle("Fusion")
+
+    # Editorial sans for everything. IBM Plex Sans on the website — Qt
+    # will fall back to Segoe UI / Helvetica if it's not installed.
+    base = QFont("IBM Plex Sans", 10)
+    base.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
+    app.setFont(base)
+
+    if _STYLE_QSS.is_file():
+        app.setStyleSheet(_STYLE_QSS.read_text(encoding="utf-8"))
+
 
 def main() -> None:
     app = QApplication(sys.argv)
-    app.setApplicationName("Petrilya")
-    app.setStyle("Fusion")
-
-    # simple dark palette
-    from PySide6.QtGui import QColor, QPalette
-
-    palette = QPalette()
-    palette.setColor(QPalette.ColorRole.Window, QColor(45, 45, 45))
-    palette.setColor(QPalette.ColorRole.WindowText, QColor(220, 220, 220))
-    palette.setColor(QPalette.ColorRole.Base, QColor(30, 30, 30))
-    palette.setColor(QPalette.ColorRole.AlternateBase, QColor(45, 45, 45))
-    palette.setColor(QPalette.ColorRole.Text, QColor(220, 220, 220))
-    palette.setColor(QPalette.ColorRole.Button, QColor(60, 60, 60))
-    palette.setColor(QPalette.ColorRole.ButtonText, QColor(220, 220, 220))
-    palette.setColor(QPalette.ColorRole.Highlight, QColor(80, 130, 200))
-    palette.setColor(QPalette.ColorRole.HighlightedText, QColor(255, 255, 255))
-    app.setPalette(palette)
-
+    configure_app(app)
     window = MainWindow()
     window.show()
     sys.exit(app.exec())
