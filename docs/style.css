@@ -936,6 +936,77 @@ html.light .community-link:hover { background: rgba(184, 132, 42, 0.08); }
   transform: translate(2px, -2px);
 }
 
+/* ============================================================
+ * Download-section CTA buttons — match community-link style.
+ * Scoped to .download so the global .btn-primary/.btn-ghost
+ * (used by the hero) stays untouched.
+ * ========================================================== */
+.download p:has(> .btn) > .btn,
+.download p:has(> .btn) > .btn-primary,
+.download p:has(> .btn) > .btn-ghost {
+  /* reset the global primary/ghost styling */
+  background: rgba(255, 255, 255, 0.015);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: none;
+  padding: 9px 14px;
+  font-size: 13px;
+  letter-spacing: 0.1px;
+  gap: 10px;
+  min-width: 260px;
+  box-sizing: border-box;
+  position: relative;
+  transition:
+    color 0.18s ease,
+    border-color 0.18s ease,
+    background 0.18s ease,
+    transform 0.18s ease;
+}
+html.light .download p:has(> .btn) > .btn {
+  background: rgba(255, 255, 255, 0.5);
+}
+
+.download p:has(> .btn) > .btn:hover {
+  color: var(--accent-2);
+  border-color: var(--accent-2);
+  background: rgba(240, 200, 74, 0.06);
+  transform: translateY(-1px);
+  box-shadow: none;
+}
+html.light .download p:has(> .btn) > .btn:hover {
+  background: rgba(184, 132, 42, 0.08);
+}
+
+.download p:has(> .btn) > .btn .btn-icon {
+  width: 15px;
+  height: 15px;
+  opacity: 0.75;
+  transition: opacity 0.18s ease;
+}
+.download p:has(> .btn) > .btn:hover .btn-icon { opacity: 1; }
+
+/* external-link ↗ arrow on the right edge */
+.download p:has(> .btn) > .btn::after {
+  content: "";
+  width: 10px;
+  height: 10px;
+  margin-left: auto;
+  background-color: currentColor;
+  opacity: 0.45;
+  -webkit-mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M5 11l6-6M6 5h5v5'/></svg>");
+          mask-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'><path fill='none' stroke='black' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round' d='M5 11l6-6M6 5h5v5'/></svg>");
+  -webkit-mask-repeat: no-repeat;
+          mask-repeat: no-repeat;
+  -webkit-mask-size: contain;
+          mask-size: contain;
+  transition: opacity 0.18s ease, transform 0.25s ease;
+}
+.download p:has(> .btn) > .btn:hover::after {
+  opacity: 1;
+  transform: translate(2px, -2px);
+}
+
 .btn .btn-icon { width: 16px; height: 16px; }
 
 .hero-meta {
@@ -1971,8 +2042,12 @@ html.light .theme-toggle .theme-icon-moon {
   }
 
   /* Download-секция: кнопки на всю ширину, одинаковая высота */
-  .download p:has(> .btn) { flex-direction: column; gap: 10px; }
-  .download p:has(> .btn) > .btn { width: 100%; justify-content: center; }
+  .download p:has(> .btn) {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+  .download p:has(> .btn) > .btn { width: 100%; min-width: 0; }
 }
 
 /* Small phone */
