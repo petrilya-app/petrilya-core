@@ -28,6 +28,7 @@ from PySide6.QtWidgets import (
     QTableWidget,
     QTableWidgetItem,
     QToolBar,
+    QToolButton,
     QVBoxLayout,
     QWidget,
 )
@@ -190,6 +191,7 @@ class MainWindow(QMainWindow):
         self.canvas = ImageCanvas()
         self.canvas.masks_edited.connect(self.on_masks_edited)
         self.canvas.colony_clicked.connect(self._on_colony_clicked)
+        self.canvas.open_requested.connect(self.open_dialog)
         splitter.addWidget(self.canvas)
 
         # right: controls + results
@@ -211,7 +213,7 @@ class MainWindow(QMainWindow):
         form.addRow("Scale:", self.scale_spin)
 
         self.gpu_check = QCheckBox("Use GPU (CUDA/MPS)")
-        self.gpu_check.setChecked(False)
+        self.gpu_check.setChecked(True)
         form.addRow(self.gpu_check)
 
         right_layout.addWidget(settings_box)
@@ -266,23 +268,39 @@ class MainWindow(QMainWindow):
         roi_row.addWidget(self.roi_check)
         view_layout.addLayout(roi_row)
 
-        # edit mode radios
+        # edit-mode toggle row — icon buttons with tooltips
         edit_row = QHBoxLayout()
+        edit_row.setSpacing(6)
         edit_row.addWidget(QLabel("Mode:"))
-        self.mode_view = QRadioButton("View")
+
+        def _mk_mode_btn(label: str, icon_name: str, tooltip: str) -> QToolButton:
+            b = QToolButton()
+            b.setText(label)
+            b.setIcon(icon(icon_name, 16))
+            b.setIconSize(QSize(16, 16))
+            b.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+            b.setCheckable(True)
+            b.setAutoExclusive(True)
+            b.setToolTip(tooltip)
+            b.setProperty("modeButton", True)
+            return b
+
+        self.mode_view = _mk_mode_btn("View", "eye",
+            "View only — pan and zoom, no editing")
+        self.mode_erase = _mk_mode_btn("Erase", "eraser",
+            "Click a colony to delete it from the mask")
+        self.mode_brush = _mk_mode_btn("Brush", "brush",
+            "Paint a new colony. Use the Brush slider to size it; "
+            "scroll wheel adjusts size on the fly.")
+        self.mode_lasso = _mk_mode_btn("Lasso", "lasso",
+            "Drag to draw a freehand region — releasing erases every "
+            "colony whose centroid is inside it.")
+
         self.mode_view.setChecked(True)
-        self.mode_erase = QRadioButton("Erase")
-        self.mode_brush = QRadioButton("Brush")
-        self._mode_group = QButtonGroup(self)
-        self._mode_group.addButton(self.mode_view)
-        self._mode_group.addButton(self.mode_erase)
-        self._mode_group.addButton(self.mode_brush)
-        self.mode_view.toggled.connect(self._on_mode_changed)
-        self.mode_erase.toggled.connect(self._on_mode_changed)
-        self.mode_brush.toggled.connect(self._on_mode_changed)
-        edit_row.addWidget(self.mode_view)
-        edit_row.addWidget(self.mode_erase)
-        edit_row.addWidget(self.mode_brush)
+        for b in (self.mode_view, self.mode_erase, self.mode_brush, self.mode_lasso):
+            b.toggled.connect(self._on_mode_changed)
+            edit_row.addWidget(b)
+        edit_row.addStretch(1)
         view_layout.addLayout(edit_row)
 
         # brush size
@@ -359,8 +377,14 @@ class MainWindow(QMainWindow):
         right_layout.addLayout(exports)
 
         splitter.addWidget(right)
-        splitter.setStretchFactor(0, 3)
-        splitter.setStretchFactor(1, 2)
+        # Keep the canvas growing when the window resizes; sidebar stays
+        # close to its preferred width unless the user drags the handle.
+        splitter.setStretchFactor(0, 1)
+        splitter.setStretchFactor(1, 0)
+        right.setMinimumWidth(420)
+        right.setMaximumWidth(560)
+        # Sized for a 1380 px window: ~880 canvas + 460 sidebar.
+        splitter.setSizes([900, 460])
 
         self._splitter = splitter
         self._right_pane = right
@@ -515,6 +539,9 @@ class MainWindow(QMainWindow):
         elif self.mode_brush.isChecked():
             self.canvas.set_edit_mode(ImageCanvas.EDIT_BRUSH)
             self.brush_slider.setEnabled(True)
+        elif self.mode_lasso.isChecked():
+            self.canvas.set_edit_mode(ImageCanvas.EDIT_LASSO)
+            self.brush_slider.setEnabled(False)
 
     # -------------------------------- actions -------------------------------
 

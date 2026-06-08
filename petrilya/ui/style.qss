@@ -59,6 +59,28 @@ QToolButton:checked {
 }
 QToolButton:disabled { color: $text_mute; }
 
+/* Mode-toggle pills (View / Erase / Brush / Lasso) */
+QToolButton[modeButton="true"] {
+    background-color: transparent;
+    color: $text_subtle;
+    border: 1px solid $border;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12.5px;
+    font-weight: 500;
+}
+QToolButton[modeButton="true"]:hover {
+    border-color: $accent;
+    color: $accent;
+    background-color: $accent_tint2;
+}
+QToolButton[modeButton="true"]:checked {
+    background-color: $accent_tint;
+    color: $accent;
+    border-color: $accent;
+    font-weight: 600;
+}
+
 
 /* ===================== menubar / menus ============================ */
 QMenuBar {

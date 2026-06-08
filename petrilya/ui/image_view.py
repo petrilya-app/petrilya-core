@@ -122,6 +122,7 @@ class ImageCanvas(QGraphicsView):
     EDIT_NONE = "none"
     EDIT_ERASE = "erase"
     EDIT_BRUSH = "brush"
+    EDIT_LASSO = "lasso"
 
     # ROI dragging modes
     ROI_NONE = "none"
@@ -133,6 +134,7 @@ class ImageCanvas(QGraphicsView):
     SPLIT_HIT_RADIUS_VIEW = 28  # in viewport pixels — handle is a fixed size
 
     masks_edited = Signal()    # emitted after every user-triggered mask change
+    open_requested = Signal()  # canvas clicked while empty → open file dialog
     roi_changed = Signal()     # emitted when the dish ROI is moved/resized
     split_changed = Signal()   # emitted when the before/after split is moved
     colony_clicked = Signal(int)  # emitted with the label id of a clicked colony
@@ -182,6 +184,19 @@ class ImageCanvas(QGraphicsView):
         self._split_arrow_item = None
         self._split_dragging: bool = False
 
+        # Lasso freehand-select state
+        self._lasso_points: list[QPointF] = []
+        self._lasso_item = None      # QGraphicsPathItem
+        self._lasso_active: bool = False
+
+        # ROI dim-mask: a translucent dark overlay covering everything
+        # OUTSIDE the dish circle so the user only "sees" their crop.
+        self._roi_mask_item = None   # QGraphicsPathItem
+
+        # Brush/erase cursor preview — a hollow circle that follows the
+        # mouse showing the actual paint radius.
+        self._cursor_preview_item: QGraphicsEllipseItem | None = None
+
         # Table-row → canvas selection: highlight one colony in vivid
         # contrast over the regular overlay.
         self._highlight_label: int | None = None
@@ -202,8 +217,13 @@ class ImageCanvas(QGraphicsView):
 
         frame = QFrame(self.viewport())
         frame.setObjectName("emptyState")
-        frame.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
         frame.setFixedSize(380, 240)
+        frame.setCursor(Qt.CursorShape.PointingHandCursor)
+        # Click anywhere on the dashed card to open a file picker.
+        frame.mousePressEvent = (
+            lambda e: self.open_requested.emit()
+            if e.button() == Qt.MouseButton.LeftButton else None
+        )
 
         layout = QVBoxLayout(frame)
         layout.setContentsMargins(28, 32, 28, 28)
@@ -422,17 +442,12 @@ class ImageCanvas(QGraphicsView):
         self._split_arrow_item = None
 
     def _draw_split(self) -> None:
-        """Render the before/after divider line + draggable handle.
+        """Render the before/after divider line + slim pill handle.
 
-        Composition (bottom → top):
-          1. Soft dark line behind the white one — gives the divider
-             definition on bright dish photos.
-          2. Crisp white line on top.
-          3. Soft blurred drop-shadow ellipse under the handle.
-          4. Solid white handle (clean canvas).
-          5. Thin amber accent ring — brand colour without taking over.
-          6. Dark chevrons inside, signalling 'draggable'.
-
+        Modern slim composition:
+          1. 1-px white divider line, no shadow stripe — clean.
+          2. Vertical capsule handle (10×26 px), white with subtle
+             1-px border. Two tiny chevrons inside.
         Everything in the handle uses ItemIgnoresTransformations so the
         slider stays at a constant viewport size regardless of zoom.
         """
@@ -441,90 +456,34 @@ class ImageCanvas(QGraphicsView):
         h = self._base_item.pixmap().height()
         sx = self._split_x
 
-        # ---------------------------------------------------------- 1) line
-        # Shadow line behind: subtle dark stripe so the white divider
-        # stays visible over the lightest agar areas without looking neon.
-        if self._split_line_shadow_item is None:
-            self._split_line_shadow_item = QGraphicsLineItem()
-            self._split_line_shadow_item.setZValue(9)
-            self._scene.addItem(self._split_line_shadow_item)
-        shadow_pen = QPen(QColor(0, 0, 0, 110), 0)
-        shadow_pen.setCosmetic(True)
-        shadow_pen.setWidthF(3.5)
-        shadow_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
-        self._split_line_shadow_item.setPen(shadow_pen)
-        self._split_line_shadow_item.setLine(sx, 0, sx, h)
-
-        # Main white line — slightly thinner & softer than before.
+        # 1) Crisp 1-px white divider — no shadow, no glow.
+        if self._split_line_shadow_item is not None:
+            if self._split_line_shadow_item.scene() is self._scene:
+                self._scene.removeItem(self._split_line_shadow_item)
+            self._split_line_shadow_item = None
         if self._split_line_item is None:
             self._split_line_item = QGraphicsLineItem()
             self._split_line_item.setZValue(10)
             self._scene.addItem(self._split_line_item)
-        line_pen = QPen(QColor(255, 255, 255, 235), 0)
+        line_pen = QPen(QColor(255, 255, 255, 215), 0)
         line_pen.setCosmetic(True)
-        line_pen.setWidthF(1.5)
+        line_pen.setWidthF(1.0)
         line_pen.setCapStyle(Qt.PenCapStyle.FlatCap)
         self._split_line_item.setPen(line_pen)
         self._split_line_item.setLine(sx, 0, sx, h)
 
-        # -------------------------------------------------------- 2) handle
-        r = 22.0                          # was 28 — smaller & more refined
-        handle_pos = QPointF(sx, h / 2)
+        # Discard the old big circle handle if it's still on the scene.
+        for attr in ("_split_handle_shadow_item",
+                     "_split_handle_item",
+                     "_split_handle_ring_item",
+                     "_split_handle_inner"):
+            item = getattr(self, attr, None)
+            if item is not None and item.scene() is self._scene:
+                self._scene.removeItem(item)
+            setattr(self, attr, None)
 
-        # Soft drop shadow — a slightly larger dark ellipse offset down,
-        # blurred via QGraphicsBlurEffect. Works with IgnoresTransforms.
-        if self._split_handle_shadow_item is None:
-            self._split_handle_shadow_item = QGraphicsEllipseItem()
-            self._split_handle_shadow_item.setZValue(10)
-            self._split_handle_shadow_item.setFlag(
-                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
-            )
-            self._scene.addItem(self._split_handle_shadow_item)
-            blur = QGraphicsBlurEffect()
-            blur.setBlurRadius(10)
-            self._split_handle_shadow_item.setGraphicsEffect(blur)
-        self._split_handle_shadow_item.setPen(QPen(Qt.PenStyle.NoPen))
-        self._split_handle_shadow_item.setBrush(QBrush(QColor(0, 0, 0, 130)))
-        sh_r = r + 1.5
-        self._split_handle_shadow_item.setRect(QRectF(
-            -sh_r, -sh_r + 3.0, sh_r * 2, sh_r * 2,
-        ))
-        self._split_handle_shadow_item.setPos(handle_pos)
-
-        # Main white handle — clean, no fill colour.
-        if self._split_handle_item is None:
-            self._split_handle_item = QGraphicsEllipseItem()
-            self._split_handle_item.setZValue(11)
-            self._split_handle_item.setFlag(
-                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
-            )
-            self._scene.addItem(self._split_handle_item)
-        self._split_handle_item.setPen(QPen(Qt.PenStyle.NoPen))
-        self._split_handle_item.setBrush(QBrush(QColor(255, 255, 255, 250)))
-        self._split_handle_item.setRect(QRectF(-r, -r, r * 2, r * 2))
-        self._split_handle_item.setPos(handle_pos)
-
-        # Thin amber accent ring on top of the white handle — keeps the
-        # brand colour without making the whole control look like a button.
-        if self._split_handle_ring_item is None:
-            self._split_handle_ring_item = QGraphicsEllipseItem()
-            self._split_handle_ring_item.setZValue(12)
-            self._split_handle_ring_item.setFlag(
-                QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
-            )
-            self._scene.addItem(self._split_handle_ring_item)
-        ring_pen = QPen(QColor(240, 200, 74, 230), 0)
-        ring_pen.setCosmetic(True)
-        ring_pen.setWidthF(1.6)
-        self._split_handle_ring_item.setPen(ring_pen)
-        self._split_handle_ring_item.setBrush(QBrush(Qt.GlobalColor.transparent))
-        # Inset by 1.5 px so the ring sits just inside the handle edge.
-        self._split_handle_ring_item.setRect(QRectF(
-            -r + 1.5, -r + 1.5, (r - 1.5) * 2, (r - 1.5) * 2,
-        ))
-        self._split_handle_ring_item.setPos(handle_pos)
-
-        # Chevrons ‹  › — slimmer & darker for clean contrast on white.
+        # 2) Slim vertical pill handle as a single QGraphicsPathItem so we
+        # get rounded corners "for free" via a rounded rect path.
         from PySide6.QtGui import QPainterPath
         from PySide6.QtWidgets import QGraphicsPathItem
 
@@ -535,20 +494,26 @@ class ImageCanvas(QGraphicsView):
                 QGraphicsItem.GraphicsItemFlag.ItemIgnoresTransformations
             )
             self._scene.addItem(self._split_arrow_item)
-        path = QPainterPath()
-        path.moveTo(-5.0, -5.0)
-        path.lineTo(-9.0, 0.0)
-        path.lineTo(-5.0, 5.0)
-        path.moveTo(5.0, -5.0)
-        path.lineTo(9.0, 0.0)
-        path.lineTo(5.0, 5.0)
-        arrow_pen = QPen(QColor(35, 45, 65, 240), 0)
-        arrow_pen.setCosmetic(True)
-        arrow_pen.setWidthF(1.8)
-        arrow_pen.setCapStyle(Qt.PenCapStyle.RoundCap)
-        arrow_pen.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
-        self._split_arrow_item.setPen(arrow_pen)
-        self._split_arrow_item.setPath(path)
+
+        pw, ph = 12.0, 30.0      # pill width × height in viewport pixels
+        pill = QPainterPath()
+        pill.addRoundedRect(-pw / 2, -ph / 2, pw, ph, pw / 2, pw / 2)
+        # tiny chevrons inside, ASCII < and >
+        pill.moveTo(-2.2, -3.0)
+        pill.lineTo(-4.0, 0.0)
+        pill.lineTo(-2.2, 3.0)
+        pill.moveTo(2.2, -3.0)
+        pill.lineTo(4.0, 0.0)
+        pill.lineTo(2.2, 3.0)
+        self._split_arrow_item.setPath(pill)
+        self._split_arrow_item.setBrush(QBrush(QColor(255, 255, 255, 245)))
+        outline = QPen(QColor(15, 22, 32, 200), 0)
+        outline.setCosmetic(True)
+        outline.setWidthF(1.0)
+        outline.setCapStyle(Qt.PenCapStyle.RoundCap)
+        outline.setJoinStyle(Qt.PenJoinStyle.RoundJoin)
+        self._split_arrow_item.setPen(outline)
+        handle_pos = QPointF(sx, h / 2)
         self._split_arrow_item.setPos(handle_pos)
 
     def _split_handle_hit(self, scene_pos: QPointF) -> bool:
@@ -568,9 +533,11 @@ class ImageCanvas(QGraphicsView):
         self._roi_visible = bool(visible)
         if not visible:
             self._clear_roi_items()
+            self._clear_roi_mask()
             self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
         elif self._roi is not None:
             self._draw_roi()
+            self._draw_roi_mask()
 
     def is_roi_visible(self) -> bool:
         return self._roi_visible
@@ -579,6 +546,7 @@ class ImageCanvas(QGraphicsView):
         self._roi = (float(cx), float(cy), max(10.0, float(r)))
         if self._roi_visible:
             self._draw_roi()
+            self._draw_roi_mask()
 
     def dish_roi(self) -> tuple[float, float, float] | None:
         return self._roi
@@ -636,12 +604,53 @@ class ImageCanvas(QGraphicsView):
         self._roi_edge_handle.setBrush(handle_brush)
         self._roi_edge_handle.setRect(cx + r - h, cy - h, 2 * h, 2 * h)
 
+    # ----------------------------- ROI dim mask ------------------------
+    def _draw_roi_mask(self) -> None:
+        """Dim everything OUTSIDE the dish ROI so the user only sees the dish.
+
+        Implemented as a single QGraphicsPathItem with the path = canvas
+        rect minus the circle (an "even-odd" fill rule cuts a hole).
+        """
+        from PySide6.QtGui import QPainterPath
+        from PySide6.QtWidgets import QGraphicsPathItem
+
+        if self._base_item is None or self._roi is None:
+            return
+        cx, cy, r = self._roi
+        h = self._base_item.pixmap().height()
+        w = self._base_item.pixmap().width()
+
+        outer = QPainterPath()
+        outer.addRect(0, 0, w, h)
+        outer.addEllipse(cx - r, cy - r, r * 2, r * 2)
+        outer.setFillRule(Qt.FillRule.OddEvenFill)
+
+        if self._roi_mask_item is None:
+            self._roi_mask_item = QGraphicsPathItem()
+            self._roi_mask_item.setZValue(3)   # above image, below mask overlay
+            self._scene.addItem(self._roi_mask_item)
+        self._roi_mask_item.setPath(outer)
+        self._roi_mask_item.setPen(QPen(Qt.PenStyle.NoPen))
+        self._roi_mask_item.setBrush(QBrush(QColor(0, 0, 0, 175)))
+
+    def _clear_roi_mask(self) -> None:
+        if self._roi_mask_item is not None and self._roi_mask_item.scene() is self._scene:
+            self._scene.removeItem(self._roi_mask_item)
+        self._roi_mask_item = None
+
     def set_edit_mode(self, mode: str) -> None:
-        if mode not in (self.EDIT_NONE, self.EDIT_ERASE, self.EDIT_BRUSH):
+        if mode not in (self.EDIT_NONE, self.EDIT_ERASE,
+                        self.EDIT_BRUSH, self.EDIT_LASSO):
             raise ValueError(f"Unknown edit mode: {mode}")
         self._edit_mode = mode
+        # When the user leaves brush/erase mode the cursor-preview circle
+        # should go away — it makes no sense in View / Lasso modes.
+        if mode not in (self.EDIT_BRUSH, self.EDIT_ERASE):
+            self._hide_cursor_preview()
         if mode == self.EDIT_NONE:
             self.viewport().setCursor(Qt.CursorShape.ArrowCursor)
+        elif mode == self.EDIT_LASSO:
+            self.viewport().setCursor(Qt.CursorShape.CrossCursor)
         else:
             self.viewport().setCursor(Qt.CursorShape.CrossCursor)
 
@@ -728,6 +737,13 @@ class ImageCanvas(QGraphicsView):
         return self.ROI_NONE
 
     def mousePressEvent(self, event: QMouseEvent) -> None:  # noqa: N802
+        # No image loaded → any left-click opens the file picker.
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and self._base_item is None
+        ):
+            self.open_requested.emit()
+            return
         # middle button always pans
         if event.button() == Qt.MouseButton.MiddleButton:
             self.setDragMode(QGraphicsView.DragMode.ScrollHandDrag)
@@ -766,6 +782,17 @@ class ImageCanvas(QGraphicsView):
                 )
                 event.accept()
                 return
+
+        # Lasso freehand start — only when masks exist and lasso mode is on.
+        if (
+            event.button() == Qt.MouseButton.LeftButton
+            and not self._space_held
+            and self._masks is not None
+            and self._edit_mode == self.EDIT_LASSO
+        ):
+            self._start_lasso(self.mapToScene(event.position().toPoint()))
+            event.accept()
+            return
 
         if (
             event.button() == Qt.MouseButton.LeftButton
@@ -833,6 +860,7 @@ class ImageCanvas(QGraphicsView):
                 new_r = max(15.0, ((x - cx) ** 2 + (y - cy) ** 2) ** 0.5)
                 self._roi = (cx, cy, new_r)
             self._draw_roi()
+            self._draw_roi_mask()
             self.roi_changed.emit()
             event.accept()
             return
@@ -861,6 +889,16 @@ class ImageCanvas(QGraphicsView):
                     else Qt.CursorShape.ArrowCursor
                 )
 
+        # Lasso freehand grow
+        if (
+            event.buttons() & Qt.MouseButton.LeftButton
+            and self._lasso_active
+            and self._edit_mode == self.EDIT_LASSO
+        ):
+            self._extend_lasso(self.mapToScene(event.position().toPoint()))
+            event.accept()
+            return
+
         if (
             event.buttons() & Qt.MouseButton.LeftButton
             and not self._space_held
@@ -870,8 +908,19 @@ class ImageCanvas(QGraphicsView):
             self._apply_edit_at(
                 self.mapToScene(event.position().toPoint()), starting=False
             )
+            # also follow with the cursor preview circle
+            self._update_cursor_preview(self.mapToScene(event.position().toPoint()))
             event.accept()
             return
+
+        # Brush/erase: show a cursor-preview circle that tracks the mouse
+        # at the configured radius, so the user sees the actual paint area.
+        if (
+            self._edit_mode in (self.EDIT_BRUSH, self.EDIT_ERASE)
+            and self._masks is not None
+        ):
+            self._update_cursor_preview(self.mapToScene(event.position().toPoint()))
+
         super().mouseMoveEvent(event)
 
     def mouseReleaseEvent(self, event: QMouseEvent) -> None:  # noqa: N802
@@ -889,9 +938,120 @@ class ImageCanvas(QGraphicsView):
             self.setDragMode(QGraphicsView.DragMode.NoDrag)
             return
         if event.button() == Qt.MouseButton.LeftButton:
+            # Finish a lasso path → erase every colony inside it.
+            if self._lasso_active:
+                self._finish_lasso()
+                event.accept()
+                return
             self._brush_active_label = 0
             self.masks_edited.emit()
         super().mouseReleaseEvent(event)
+
+    # ---------------------------- lasso + cursor preview --------------------
+
+    def _start_lasso(self, scene_pos: QPointF) -> None:
+        from PySide6.QtGui import QPainterPath
+        from PySide6.QtWidgets import QGraphicsPathItem
+
+        self._lasso_points = [scene_pos]
+        self._lasso_active = True
+        if self._lasso_item is None:
+            self._lasso_item = QGraphicsPathItem()
+            self._lasso_item.setZValue(14)
+            self._scene.addItem(self._lasso_item)
+        path = QPainterPath(scene_pos)
+        self._lasso_item.setPath(path)
+        pen = QPen(QColor(91, 159, 209, 230), 0)  # accent blue
+        pen.setCosmetic(True)
+        pen.setWidthF(1.8)
+        pen.setStyle(Qt.PenStyle.DashLine)
+        pen.setDashPattern([5, 4])
+        self._lasso_item.setPen(pen)
+        self._lasso_item.setBrush(QBrush(QColor(91, 159, 209, 45)))
+
+    def _extend_lasso(self, scene_pos: QPointF) -> None:
+        from PySide6.QtGui import QPainterPath
+        if not self._lasso_active or self._lasso_item is None:
+            return
+        # Throttle: skip points too close to the last one
+        last = self._lasso_points[-1] if self._lasso_points else None
+        if last is not None:
+            dx = scene_pos.x() - last.x()
+            dy = scene_pos.y() - last.y()
+            if dx * dx + dy * dy < 4.0:    # < 2 scene px
+                return
+        self._lasso_points.append(scene_pos)
+        path = QPainterPath(self._lasso_points[0])
+        for p in self._lasso_points[1:]:
+            path.lineTo(p)
+        self._lasso_item.setPath(path)
+
+    def _finish_lasso(self) -> None:
+        from PySide6.QtGui import QPainterPath
+        if not self._lasso_active or self._masks is None:
+            self._lasso_active = False
+            return
+        pts = self._lasso_points
+        self._lasso_active = False
+
+        # Need at least a small triangle to do anything meaningful.
+        if len(pts) < 3:
+            self._clear_lasso_item()
+            return
+
+        # Close the path and erase every colony whose centroid lies inside.
+        path = QPainterPath(pts[0])
+        for p in pts[1:]:
+            path.lineTo(p)
+        path.closeSubpath()
+
+        from skimage import measure
+        removed = 0
+        for prop in measure.regionprops(self._masks):
+            cy, cx = prop.centroid
+            if path.contains(QPointF(float(cx), float(cy))):
+                self._masks[self._masks == prop.label] = 0
+                removed += 1
+        self._clear_lasso_item()
+        if removed:
+            self._refresh_overlay()
+            self.masks_edited.emit()
+
+    def _clear_lasso_item(self) -> None:
+        if self._lasso_item is not None and self._lasso_item.scene() is self._scene:
+            self._scene.removeItem(self._lasso_item)
+        self._lasso_item = None
+        self._lasso_points = []
+
+    def _update_cursor_preview(self, scene_pos: QPointF) -> None:
+        """A hollow circle that tracks the cursor at the brush radius."""
+        if self._cursor_preview_item is None:
+            self._cursor_preview_item = QGraphicsEllipseItem()
+            self._cursor_preview_item.setZValue(15)
+            self._cursor_preview_item.setBrush(QBrush(Qt.GlobalColor.transparent))
+            self._scene.addItem(self._cursor_preview_item)
+        # Colour hints at the mode — red-ish for erase, blue for brush.
+        if self._edit_mode == self.EDIT_ERASE:
+            col = QColor(224, 96, 96, 230)
+        else:
+            col = QColor(91, 159, 209, 230)
+        pen = QPen(col, 0)
+        pen.setCosmetic(True)
+        pen.setWidthF(1.6)
+        self._cursor_preview_item.setPen(pen)
+        r = float(self._brush_size)
+        self._cursor_preview_item.setRect(
+            scene_pos.x() - r, scene_pos.y() - r, r * 2, r * 2
+        )
+        self._cursor_preview_item.show()
+
+    def _hide_cursor_preview(self) -> None:
+        if self._cursor_preview_item is not None:
+            self._cursor_preview_item.hide()
+
+    def leaveEvent(self, event) -> None:  # noqa: N802
+        self._hide_cursor_preview()
+        super().leaveEvent(event)
 
     # ---------------------------- editing logic -----------------------------
 
