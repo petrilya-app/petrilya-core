@@ -606,10 +606,12 @@ class ImageCanvas(QGraphicsView):
 
     # ----------------------------- ROI dim mask ------------------------
     def _draw_roi_mask(self) -> None:
-        """Dim everything OUTSIDE the dish ROI so the user only sees the dish.
+        """Crop the view to inside the ROI circle — everything outside is
+        fully blacked out, as if the rest of the image isn't there.
 
         Implemented as a single QGraphicsPathItem with the path = canvas
         rect minus the circle (an "even-odd" fill rule cuts a hole).
+        Solid opaque fill so the user sees a true crop, not a dim overlay.
         """
         from PySide6.QtGui import QPainterPath
         from PySide6.QtWidgets import QGraphicsPathItem
@@ -627,11 +629,14 @@ class ImageCanvas(QGraphicsView):
 
         if self._roi_mask_item is None:
             self._roi_mask_item = QGraphicsPathItem()
-            self._roi_mask_item.setZValue(3)   # above image, below mask overlay
+            # Sit above the highlight overlay (z=4) and mask overlay (z=1)
+            # so colonies/text outside the circle vanish too — not just the
+            # background photo.
+            self._roi_mask_item.setZValue(8)
             self._scene.addItem(self._roi_mask_item)
         self._roi_mask_item.setPath(outer)
         self._roi_mask_item.setPen(QPen(Qt.PenStyle.NoPen))
-        self._roi_mask_item.setBrush(QBrush(QColor(0, 0, 0, 175)))
+        self._roi_mask_item.setBrush(QBrush(QColor(0, 0, 0, 255)))
 
     def _clear_roi_mask(self) -> None:
         if self._roi_mask_item is not None and self._roi_mask_item.scene() is self._scene:
