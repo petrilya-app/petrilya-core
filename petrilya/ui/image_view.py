@@ -20,6 +20,7 @@ from PySide6.QtGui import (
     QWheelEvent,
 )
 from PySide6.QtWidgets import (
+    QFrame,
     QGraphicsBlurEffect,
     QGraphicsEllipseItem,
     QGraphicsItem,
@@ -27,7 +28,9 @@ from PySide6.QtWidgets import (
     QGraphicsPixmapItem,
     QGraphicsScene,
     QGraphicsView,
+    QLabel,
     QSizePolicy,
+    QVBoxLayout,
 )
 from PySide6.QtCore import QPointF, QRectF
 from PySide6.QtGui import QBrush, QPen
@@ -184,16 +187,73 @@ class ImageCanvas(QGraphicsView):
         self._highlight_label: int | None = None
         self._highlight_overlay_item: QGraphicsPixmapItem | None = None
 
-        self._placeholder = self._scene.addText(
-            "Drag and drop an image here\nor use File > Open"
-        )
-        self._placeholder.setDefaultTextColor(QColor(140, 140, 140))
+        # Editorial empty-state — dashed-border card with upload icon
+        # and friendly two-line copy. Lives as a child widget of the
+        # viewport, not a scene item, so it can use the global QSS.
+        self._empty_state = self._build_empty_state()
+        self._empty_state.show()
+        self._placeholder = None
 
     # ---------------------------- public api --------------------------------
+
+    def _build_empty_state(self) -> QFrame:
+        """Build the dashed-card 'drop image here' overlay."""
+        from petrilya.ui.icons import icon
+
+        frame = QFrame(self.viewport())
+        frame.setObjectName("emptyState")
+        frame.setAttribute(Qt.WidgetAttribute.WA_TransparentForMouseEvents)
+        frame.setFixedSize(380, 240)
+
+        layout = QVBoxLayout(frame)
+        layout.setContentsMargins(28, 32, 28, 28)
+        layout.setSpacing(10)
+        layout.setAlignment(Qt.AlignmentFlag.AlignCenter)
+
+        ic = QLabel()
+        ic.setPixmap(icon("upload-cloud", 42, "#8a93a4").pixmap(42, 42))
+        ic.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(ic)
+
+        title = QLabel("Drop a petri dish photo here")
+        title.setObjectName("emptyTitle")
+        title.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(title)
+
+        sub = QLabel("or use File → Open  ·  JPG, PNG, TIFF, BMP")
+        sub.setObjectName("emptySubtitle")
+        sub.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(sub)
+
+        layout.addSpacing(6)
+
+        hint = QLabel("CTRL+O")
+        hint.setObjectName("emptyHint")
+        hint.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        layout.addWidget(hint)
+
+        return frame
+
+    def _position_empty_state(self) -> None:
+        if getattr(self, "_empty_state", None) is None:
+            return
+        vp = self.viewport()
+        if vp is None:
+            return
+        es = self._empty_state
+        x = (vp.width() - es.width()) // 2
+        y = (vp.height() - es.height()) // 2
+        es.move(max(0, x), max(0, y))
+
+    def resizeEvent(self, event) -> None:  # noqa: N802 — Qt API
+        super().resizeEvent(event)
+        self._position_empty_state()
 
     def set_image(self, image: np.ndarray) -> None:
         self._scene.clear()
         self._placeholder = None
+        if getattr(self, "_empty_state", None) is not None:
+            self._empty_state.hide()
         self._roi_circle_item = None
         self._roi_center_handle = None
         self._roi_edge_handle = None

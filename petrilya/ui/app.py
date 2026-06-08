@@ -3,35 +3,40 @@
 from __future__ import annotations
 
 import sys
-from pathlib import Path
 
 from PySide6.QtGui import QFont
 from PySide6.QtWidgets import QApplication
 
 from petrilya.ui.main_window import MainWindow
+from petrilya.ui.theme import current_theme, load_qss
 
-_STYLE_QSS = Path(__file__).with_name("style.qss")
 
-
-def configure_app(app: QApplication) -> None:
-    """Apply Petrilya branding to a QApplication.
+def configure_app(app: QApplication, theme: str | None = None) -> str:
+    """Apply Petrilya branding (font + stylesheet) to a QApplication.
 
     Shared between the production entry point and the marketing-screenshot
-    tool so both render with the same fonts and stylesheet.
+    tool so both render with the same look.
+
+    Returns the theme name that was applied (useful for callers that need
+    to sync UI state, e.g. the theme-toggle button icon).
     """
     app.setApplicationName("Petrilya")
     app.setApplicationDisplayName("Petrilya")
     app.setOrganizationName("Petrilya")
     app.setStyle("Fusion")
 
-    # Editorial sans for everything. IBM Plex Sans on the website — Qt
-    # will fall back to Segoe UI / Helvetica if it's not installed.
     base = QFont("IBM Plex Sans", 10)
     base.setStyleStrategy(QFont.StyleStrategy.PreferAntialias)
     app.setFont(base)
 
-    if _STYLE_QSS.is_file():
-        app.setStyleSheet(_STYLE_QSS.read_text(encoding="utf-8"))
+    theme = theme or current_theme()
+    app.setStyleSheet(load_qss(theme))
+    return theme
+
+
+def apply_theme(app: QApplication, theme: str) -> None:
+    """Hot-swap the stylesheet to a different theme."""
+    app.setStyleSheet(load_qss(theme))
 
 
 def main() -> None:

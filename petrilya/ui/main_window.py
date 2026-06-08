@@ -5,9 +5,10 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from PySide6.QtCore import Qt, QThreadPool
+from PySide6.QtCore import QSize, Qt, QThreadPool
 from PySide6.QtGui import QAction, QKeySequence
 from PySide6.QtWidgets import (
+    QApplication,
     QButtonGroup,
     QCheckBox,
     QDoubleSpinBox,
@@ -17,15 +18,16 @@ from PySide6.QtWidgets import (
     QHBoxLayout,
     QLabel,
     QMainWindow,
-    QMessageBox,
     QProgressBar,
     QPushButton,
     QRadioButton,
+    QSizePolicy,
     QSlider,
     QSplitter,
     QStatusBar,
     QTableWidget,
     QTableWidgetItem,
+    QToolBar,
     QVBoxLayout,
     QWidget,
 )
@@ -34,7 +36,10 @@ from petrilya.export.csv_writer import write_csv
 from petrilya.export.json_manifest import build_manifest, write_manifest
 from petrilya.export.pdf_report import write_pdf_report
 from petrilya.metrics.colony import compute_colony_metrics
+from petrilya.ui.icons import icon
 from petrilya.ui.image_view import ImageCanvas
+from petrilya.ui.theme import current_theme, toggle_theme, PALETTES
+from petrilya.ui.toast import toast
 from petrilya.ui.worker import AnalysisWorker, BatchWorker
 
 
@@ -58,57 +63,125 @@ class MainWindow(QMainWindow):
         self.last_engine_name: str = ""
         self.last_engine_params: dict = {}
 
+        self._build_actions()
         self._build_menus()
+        self._build_toolbar()
         self._build_central()
         self._build_status_bar()
 
+        # store the right pane for sidebar collapse toggle
+        # (populated in _build_central via self._right_pane)
+
     # ----------------------------- UI scaffolding ---------------------------
+
+    def _build_actions(self) -> None:
+        """Build QActions once — reused by both the menubar and toolbar."""
+        # File ----------------------------------------------------------------
+        self.act_open = QAction(icon("folder-open"), "Open image…", self)
+        self.act_open.setShortcut(QKeySequence.StandardKey.Open)
+        self.act_open.triggered.connect(self.open_dialog)
+
+        self.act_batch = QAction(icon("folder"), "Batch folder…", self)
+        self.act_batch.setShortcut(QKeySequence("Ctrl+B"))
+        self.act_batch.triggered.connect(self.run_batch)
+
+        self.act_analyze = QAction(icon("zap"), "Analyze", self)
+        self.act_analyze.setShortcut(QKeySequence("Ctrl+R"))
+        self.act_analyze.triggered.connect(self.run_analysis)
+        self.act_analyze.setEnabled(False)
+
+        self.act_export_csv = QAction(icon("file-down"), "Export CSV…", self)
+        self.act_export_csv.setShortcut(QKeySequence("Ctrl+E"))
+        self.act_export_csv.triggered.connect(self.export_csv)
+        self.act_export_csv.setEnabled(False)
+
+        self.act_export_pdf = QAction(icon("file-text"), "Export PDF…", self)
+        self.act_export_pdf.setShortcut(QKeySequence("Ctrl+Shift+E"))
+        self.act_export_pdf.triggered.connect(self.export_pdf)
+        self.act_export_pdf.setEnabled(False)
+
+        self.act_export_json = QAction(icon("braces"), "Export JSON…", self)
+        self.act_export_json.triggered.connect(self.export_json)
+        self.act_export_json.setEnabled(False)
+
+        self.act_quit = QAction("Quit", self)
+        self.act_quit.setShortcut(QKeySequence.StandardKey.Quit)
+        self.act_quit.triggered.connect(self.close)
+
+        # View ----------------------------------------------------------------
+        self.act_fit = QAction("Fit to window", self)
+        self.act_fit.setShortcut(QKeySequence("F"))
+        self.act_fit.triggered.connect(self._fit_canvas)
+
+        self.act_reset_zoom = QAction("Reset zoom (100%)", self)
+        self.act_reset_zoom.setShortcut(QKeySequence("0"))
+        self.act_reset_zoom.triggered.connect(self._reset_canvas_zoom)
+
+        # Sidebar toggle ------------------------------------------------------
+        self.act_toggle_sidebar = QAction(
+            icon("panel-right-close"), "Hide sidebar", self
+        )
+        self.act_toggle_sidebar.setShortcut(QKeySequence("Ctrl+\\"))
+        self.act_toggle_sidebar.setCheckable(True)
+        self.act_toggle_sidebar.toggled.connect(self._on_sidebar_toggled)
+
+        # Theme toggle --------------------------------------------------------
+        theme = current_theme()
+        self.act_theme = QAction(
+            icon("sun" if theme == "dark" else "moon"),
+            "Switch theme",
+            self,
+        )
+        self.act_theme.setShortcut(QKeySequence("Ctrl+T"))
+        self.act_theme.triggered.connect(self._on_theme_toggle)
 
     def _build_menus(self) -> None:
         bar = self.menuBar()
         file_menu = bar.addMenu("&File")
-
-        open_act = QAction("&Open image...", self)
-        open_act.setShortcut(QKeySequence.StandardKey.Open)
-        open_act.triggered.connect(self.open_dialog)
-        file_menu.addAction(open_act)
-
-        batch_act = QAction("&Batch process folder...", self)
-        batch_act.setShortcut(QKeySequence("Ctrl+B"))
-        batch_act.triggered.connect(self.run_batch)
-        file_menu.addAction(batch_act)
-
+        file_menu.addAction(self.act_open)
+        file_menu.addAction(self.act_batch)
         file_menu.addSeparator()
-
-        export_csv_act = QAction("Export &CSV...", self)
-        export_csv_act.setShortcut(QKeySequence("Ctrl+E"))
-        export_csv_act.triggered.connect(self.export_csv)
-        file_menu.addAction(export_csv_act)
-
-        export_pdf_act = QAction("Export &PDF report...", self)
-        export_pdf_act.setShortcut(QKeySequence("Ctrl+Shift+E"))
-        export_pdf_act.triggered.connect(self.export_pdf)
-        file_menu.addAction(export_pdf_act)
-
-        export_json_act = QAction("Export &JSON manifest...", self)
-        export_json_act.triggered.connect(self.export_json)
-        file_menu.addAction(export_json_act)
-
+        file_menu.addAction(self.act_export_csv)
+        file_menu.addAction(self.act_export_pdf)
+        file_menu.addAction(self.act_export_json)
         file_menu.addSeparator()
-        quit_act = QAction("&Quit", self)
-        quit_act.setShortcut(QKeySequence.StandardKey.Quit)
-        quit_act.triggered.connect(self.close)
-        file_menu.addAction(quit_act)
+        file_menu.addAction(self.act_quit)
 
         view_menu = bar.addMenu("&View")
-        fit_act = QAction("&Fit to window", self)
-        fit_act.setShortcut(QKeySequence("F"))
-        fit_act.triggered.connect(self._fit_canvas)
-        view_menu.addAction(fit_act)
-        reset_act = QAction("&Reset zoom (100%)", self)
-        reset_act.setShortcut(QKeySequence("0"))
-        reset_act.triggered.connect(self._reset_canvas_zoom)
-        view_menu.addAction(reset_act)
+        view_menu.addAction(self.act_fit)
+        view_menu.addAction(self.act_reset_zoom)
+        view_menu.addSeparator()
+        view_menu.addAction(self.act_toggle_sidebar)
+        view_menu.addAction(self.act_theme)
+
+    def _build_toolbar(self) -> None:
+        """Compact top toolbar with primary actions + chrome controls."""
+        tb = QToolBar("Main", self)
+        tb.setObjectName("mainToolbar")
+        tb.setMovable(False)
+        tb.setFloatable(False)
+        tb.setIconSize(QSize(17, 17))
+        tb.setToolButtonStyle(Qt.ToolButtonStyle.ToolButtonTextBesideIcon)
+        self.addToolBar(Qt.ToolBarArea.TopToolBarArea, tb)
+
+        tb.addAction(self.act_open)
+        tb.addAction(self.act_batch)
+        tb.addSeparator()
+        tb.addAction(self.act_analyze)
+        tb.addSeparator()
+        tb.addAction(self.act_export_csv)
+        tb.addAction(self.act_export_pdf)
+        tb.addAction(self.act_export_json)
+
+        # right-aligned spacer pushes chrome controls to the far edge
+        spacer = QWidget()
+        spacer.setSizePolicy(QSizePolicy.Policy.Expanding,
+                             QSizePolicy.Policy.Preferred)
+        tb.addWidget(spacer)
+
+        tb.addAction(self.act_toggle_sidebar)
+        tb.addAction(self.act_theme)
+        self._toolbar = tb
 
     def _build_central(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
@@ -143,9 +216,11 @@ class MainWindow(QMainWindow):
 
         right_layout.addWidget(settings_box)
 
-        # ---- analyze button ----
-        self.analyze_btn = QPushButton("Analyze")
+        # ---- analyze button (primary CTA — also mirrored in toolbar) ----
+        self.analyze_btn = QPushButton("  Analyze")
         self.analyze_btn.setObjectName("primaryButton")
+        self.analyze_btn.setIcon(icon("zap", 18, "#1a1304"))
+        self.analyze_btn.setIconSize(QSize(18, 18))
         self.analyze_btn.setEnabled(False)
         self.analyze_btn.setMinimumHeight(44)
         self.analyze_btn.clicked.connect(self.run_analysis)
@@ -227,10 +302,9 @@ class MainWindow(QMainWindow):
         view_layout.addLayout(brush_row)
 
         hint = QLabel(
-            "<span style='color:#888;font-size:11px'>"
-            "Wheel = zoom &nbsp;|&nbsp; Space-drag or MMB = pan &nbsp;|&nbsp; "
-            "F = fit &nbsp;|&nbsp; 0 = reset zoom</span>"
+            "WHEEL · ZOOM   ·   SPACE-DRAG · PAN   ·   F · FIT   ·   0 · RESET"
         )
+        hint.setObjectName("hintLabel")
         hint.setWordWrap(True)
         view_layout.addWidget(hint)
 
@@ -258,20 +332,26 @@ class MainWindow(QMainWindow):
         # ---- export buttons row ----
         exports = QHBoxLayout()
         exports.setSpacing(8)
-        self.csv_btn = QPushButton("CSV")
+        self.csv_btn = QPushButton("  CSV")
         self.csv_btn.setObjectName("ghostButton")
+        self.csv_btn.setIcon(icon("file-down", 16, "#c4ccdb"))
+        self.csv_btn.setIconSize(QSize(16, 16))
         self.csv_btn.setEnabled(False)
         self.csv_btn.clicked.connect(self.export_csv)
         exports.addWidget(self.csv_btn)
 
-        self.pdf_btn = QPushButton("PDF")
+        self.pdf_btn = QPushButton("  PDF")
         self.pdf_btn.setObjectName("ghostButton")
+        self.pdf_btn.setIcon(icon("file-text", 16, "#c4ccdb"))
+        self.pdf_btn.setIconSize(QSize(16, 16))
         self.pdf_btn.setEnabled(False)
         self.pdf_btn.clicked.connect(self.export_pdf)
         exports.addWidget(self.pdf_btn)
 
-        self.json_btn = QPushButton("JSON")
+        self.json_btn = QPushButton("  JSON")
         self.json_btn.setObjectName("ghostButton")
+        self.json_btn.setIcon(icon("braces", 16, "#c4ccdb"))
+        self.json_btn.setIconSize(QSize(16, 16))
         self.json_btn.setEnabled(False)
         self.json_btn.clicked.connect(self.export_json)
         exports.addWidget(self.json_btn)
@@ -281,6 +361,10 @@ class MainWindow(QMainWindow):
         splitter.addWidget(right)
         splitter.setStretchFactor(0, 3)
         splitter.setStretchFactor(1, 2)
+
+        self._splitter = splitter
+        self._right_pane = right
+        self._sidebar_last_sizes: list[int] | None = None
 
         self.setCentralWidget(splitter)
 
@@ -307,6 +391,68 @@ class MainWindow(QMainWindow):
         self.csv_btn.setEnabled(enabled)
         self.pdf_btn.setEnabled(enabled)
         self.json_btn.setEnabled(enabled)
+        # mirror to toolbar actions
+        self.act_export_csv.setEnabled(enabled)
+        self.act_export_pdf.setEnabled(enabled)
+        self.act_export_json.setEnabled(enabled)
+
+    # ----------------------------- chrome handlers --------------------------
+
+    def _on_sidebar_toggled(self, checked: bool) -> None:
+        """Collapse or restore the right control panel.
+
+        When collapsed we stash the splitter sizes so reopening returns to
+        the exact previous layout — even if the user resized the splitter.
+        """
+        if checked:
+            # collapsing
+            self._sidebar_last_sizes = self._splitter.sizes()
+            total = sum(self._sidebar_last_sizes)
+            self._splitter.setSizes([total, 0])
+            self.act_toggle_sidebar.setIcon(icon("panel-right-open"))
+            self.act_toggle_sidebar.setText("Show sidebar")
+        else:
+            sizes = self._sidebar_last_sizes or [3, 2]
+            self._splitter.setSizes(sizes)
+            self.act_toggle_sidebar.setIcon(icon("panel-right-close"))
+            self.act_toggle_sidebar.setText("Hide sidebar")
+
+    def _on_theme_toggle(self) -> None:
+        """Switch dark↔light, re-apply stylesheet, persist, refresh icons."""
+        from petrilya.ui.app import apply_theme
+
+        new = toggle_theme()
+        app = QApplication.instance()
+        if app is not None:
+            apply_theme(app, new)
+
+        # Refresh icon colours so they read on the new theme.
+        palette = PALETTES[new]
+        text_strong = palette["text"]
+        text_sub = palette["text_subtle"]
+        accent_text = palette["accent_text"]
+
+        self.act_open.setIcon(icon("folder-open", color=text_sub))
+        self.act_batch.setIcon(icon("folder", color=text_sub))
+        self.act_analyze.setIcon(icon("zap", color=text_sub))
+        self.act_export_csv.setIcon(icon("file-down", color=text_sub))
+        self.act_export_pdf.setIcon(icon("file-text", color=text_sub))
+        self.act_export_json.setIcon(icon("braces", color=text_sub))
+        self.act_toggle_sidebar.setIcon(
+            icon("panel-right-open" if self.act_toggle_sidebar.isChecked()
+                 else "panel-right-close",
+                 color=text_sub)
+        )
+        self.act_theme.setIcon(
+            icon("sun" if new == "dark" else "moon", color=text_sub)
+        )
+        # the primary CTA in the sidebar uses accent_text colour
+        self.analyze_btn.setIcon(icon("zap", 18, accent_text))
+        self.csv_btn.setIcon(icon("file-down", 16, text_sub))
+        self.pdf_btn.setIcon(icon("file-text", 16, text_sub))
+        self.json_btn.setIcon(icon("braces", 16, text_sub))
+
+        toast(self, f"Theme: {new}", level="info", duration_ms=1800)
 
     def _fit_canvas(self) -> None:
         self.canvas.fit_to_window()
@@ -396,7 +542,7 @@ class MainWindow(QMainWindow):
             else:
                 arr = np.array(img.convert("RGB"))
         except Exception as e:  # noqa: BLE001
-            QMessageBox.critical(self, "Open failed", str(e))
+            toast(self, f"Couldn't open image: {e}", level="error", duration_ms=6000)
             return
 
         self.current_image_path = path
@@ -409,13 +555,16 @@ class MainWindow(QMainWindow):
         )
         self.table.setRowCount(0)
         self.analyze_btn.setEnabled(True)
+        self.act_analyze.setEnabled(True)
         self._enable_exports(False)
         self.status_label.setText(f"Loaded {path.name}")
+        toast(self, f"Loaded {path.name} · {w}×{h}", level="info", duration_ms=2200)
 
     def run_analysis(self) -> None:
         if not self.current_image_path:
             return
         self.analyze_btn.setEnabled(False)
+        self.act_analyze.setEnabled(False)
         self._enable_exports(False)
         self.progress.setRange(0, 0)
         self.progress.setVisible(True)
@@ -446,6 +595,7 @@ class MainWindow(QMainWindow):
     ) -> None:
         self.progress.setVisible(False)
         self.analyze_btn.setEnabled(True)
+        self.act_analyze.setEnabled(True)
         self.current_image = image
         self.current_metrics = metrics
         self.last_elapsed = elapsed
@@ -477,11 +627,21 @@ class MainWindow(QMainWindow):
         self.status_label.setText(f"Done — {len(metrics)} colonies in {elapsed:.2f}s")
         self._populate_table(metrics)
         self._enable_exports(bool(metrics))
+        if metrics:
+            toast(
+                self,
+                f"Found {len(metrics)} colonies in {elapsed:.2f}s",
+                level="success",
+                duration_ms=2800,
+            )
 
     def on_error(self, msg: str) -> None:
         self.progress.setVisible(False)
         self.analyze_btn.setEnabled(True)
-        QMessageBox.critical(self, "Analysis failed", msg)
+        self.act_analyze.setEnabled(True)
+        # Strip the traceback for the toast — keep it short.
+        first_line = msg.split("\n", 1)[0]
+        toast(self, f"Analysis failed: {first_line}", level="error", duration_ms=8000)
         self.status_label.setText("Error.")
 
     def on_masks_edited(self) -> None:
@@ -542,7 +702,7 @@ class MainWindow(QMainWindow):
 
     def export_csv(self) -> None:
         if not self.current_metrics:
-            QMessageBox.information(self, "No data", "Run analysis first.")
+            toast(self, "Run analysis first", level="info")
             return
         path_str, _ = QFileDialog.getSaveFileName(
             self, "Save CSV", str(self._default_path(".csv")), "CSV (*.csv)"
@@ -550,6 +710,7 @@ class MainWindow(QMainWindow):
         if path_str:
             write_csv(self.current_metrics, Path(path_str))
             self.status_label.setText(f"Saved {path_str}")
+            toast(self, f"Saved {Path(path_str).name}", level="success")
 
     def export_pdf(self) -> None:
         masks = self.canvas.masks()
@@ -558,7 +719,7 @@ class MainWindow(QMainWindow):
             or self.current_image is None
             or masks is None
         ):
-            QMessageBox.information(self, "No data", "Run analysis first.")
+            toast(self, "Run analysis first", level="info")
             return
         path_str, _ = QFileDialog.getSaveFileName(
             self,
@@ -582,12 +743,13 @@ class MainWindow(QMainWindow):
                 scale_um_per_px=self._scale_value(),
             )
             self.status_label.setText(f"Saved {path_str}")
+            toast(self, f"Saved {Path(path_str).name}", level="success")
         except Exception as e:  # noqa: BLE001
-            QMessageBox.critical(self, "PDF export failed", str(e))
+            toast(self, f"PDF export failed: {e}", level="error", duration_ms=6000)
 
     def export_json(self) -> None:
         if not self.current_metrics or self.current_image_path is None:
-            QMessageBox.information(self, "No data", "Run analysis first.")
+            toast(self, "Run analysis first", level="info")
             return
         masks = self.canvas.masks()
         path_str, _ = QFileDialog.getSaveFileName(
@@ -610,8 +772,9 @@ class MainWindow(QMainWindow):
             )
             write_manifest(manifest, Path(path_str))
             self.status_label.setText(f"Saved {path_str}")
+            toast(self, f"Saved {Path(path_str).name}", level="success")
         except Exception as e:  # noqa: BLE001
-            QMessageBox.critical(self, "JSON export failed", str(e))
+            toast(self, f"JSON export failed: {e}", level="error", duration_ms=6000)
 
     # ------------------------------ batch -----------------------------------
 
@@ -649,10 +812,12 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(False)
         self.progress.setRange(0, 0)
         self.progress.setFormat("")
-        QMessageBox.information(
+        level = "success" if fail == 0 else "info"
+        toast(
             self,
-            "Batch complete",
-            f"Processed {ok} ok, {fail} failed.\n\nSummary: {summary_csv}",
+            f"Batch done · {ok} OK · {fail} failed → {summary_csv.name}",
+            level=level,
+            duration_ms=5000,
         )
         self.status_label.setText(
             f"Batch done — {ok} ok, {fail} failed. Summary: {summary_csv.name}"
