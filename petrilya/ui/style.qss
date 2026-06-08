@@ -450,6 +450,34 @@ QSplitter::handle:horizontal {
 QSplitter::handle:horizontal:hover { background-color: $accent_tint2; }
 
 
+/* ===================== batch filmstrip ============================ */
+QListWidget#filmstrip {
+    background-color: $bg_soft;
+    border: 1px solid $border_soft;
+    border-radius: 6px;
+    padding: 6px;
+    color: $text_subtle;
+    font-size: 11px;
+}
+QListWidget#filmstrip::item {
+    background-color: $bg_card;
+    border: 1px solid $border_soft;
+    border-radius: 5px;
+    padding: 4px;
+    margin: 2px;
+    color: $text_dim;
+}
+QListWidget#filmstrip::item:hover {
+    border-color: $border_mid;
+    background-color: $bg_hover;
+}
+QListWidget#filmstrip::item:selected {
+    border-color: $accent;
+    background-color: $accent_tint;
+    color: $accent;
+}
+
+
 /* ===================== empty state on canvas ===================== */
 QFrame#emptyState {
     background-color: $bg_soft;

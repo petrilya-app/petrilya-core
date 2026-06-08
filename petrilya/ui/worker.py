@@ -116,6 +116,9 @@ class AnalysisWorker(QRunnable):
 
 class BatchSignals(QObject):
     progress = Signal(int, int, str)
+    # Per-image result so the UI can build a filmstrip incrementally.
+    # Payload: (image_path, masks_npz_path, metrics, elapsed, engine_name)
+    result_ready = Signal(Path, Path, list, float, str)
     finished = Signal(int, int, Path)
     error = Signal(str)
 
@@ -166,6 +169,13 @@ class BatchWorker(QRunnable):
                     )
 
                     base = self.output_dir / img_path.stem
+
+                    # Save masks as compressed .npz so the user can later
+                    # re-open this result in the canvas (filmstrip click)
+                    # without re-running the full Cellpose segmentation.
+                    masks_npz = base.with_suffix(".masks.npz")
+                    np.savez_compressed(masks_npz, masks=masks.astype(np.int32))
+
                     write_csv(metrics, base.with_suffix(".csv"))
                     write_pdf_report(
                         base.with_suffix(".report.pdf"),
@@ -197,6 +207,9 @@ class BatchWorker(QRunnable):
                         }
                     )
                     ok += 1
+                    self.signals.result_ready.emit(
+                        img_path, masks_npz, metrics, elapsed, engine_name
+                    )
                 except Exception as e:  # noqa: BLE001
                     fail += 1
                     summary_rows.append(

@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 from PySide6.QtCore import QSize, Qt, QThreadPool
-from PySide6.QtGui import QAction, QKeySequence
+from PySide6.QtGui import QAction, QIcon, QKeySequence
 from PySide6.QtWidgets import (
     QApplication,
     QButtonGroup,
@@ -187,12 +187,25 @@ class MainWindow(QMainWindow):
     def _build_central(self) -> None:
         splitter = QSplitter(Qt.Orientation.Horizontal)
 
-        # left: canvas
+        # left: canvas + (hidden until needed) batch filmstrip
+        left_pane = QWidget()
+        left_layout = QVBoxLayout(left_pane)
+        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setSpacing(0)
+
         self.canvas = ImageCanvas()
         self.canvas.masks_edited.connect(self.on_masks_edited)
         self.canvas.colony_clicked.connect(self._on_colony_clicked)
         self.canvas.open_requested.connect(self.open_dialog)
-        splitter.addWidget(self.canvas)
+        left_layout.addWidget(self.canvas, 1)
+
+        # Batch results filmstrip — populated by BatchWorker signals,
+        # hidden until the first result arrives.
+        self.filmstrip = self._build_filmstrip()
+        self.filmstrip.setVisible(False)
+        left_layout.addWidget(self.filmstrip)
+
+        splitter.addWidget(left_pane)
 
         # right: controls + results
         right = QWidget()
@@ -419,6 +432,138 @@ class MainWindow(QMainWindow):
         self.act_export_csv.setEnabled(enabled)
         self.act_export_pdf.setEnabled(enabled)
         self.act_export_json.setEnabled(enabled)
+
+    # ----------------------------- batch filmstrip --------------------------
+
+    def _build_filmstrip(self) -> QWidget:
+        """Horizontal strip of batch-result thumbnails under the canvas.
+
+        Populated incrementally by BatchWorker.result_ready signals.
+        Clicking a thumbnail reloads that image + saved masks back into
+        the canvas, with full metrics and summary — no re-segmentation.
+        """
+        from PySide6.QtWidgets import QListView, QListWidget
+
+        wrap = QWidget()
+        wrap_layout = QVBoxLayout(wrap)
+        wrap_layout.setContentsMargins(8, 6, 8, 8)
+        wrap_layout.setSpacing(4)
+
+        header = QHBoxLayout()
+        header.setContentsMargins(4, 0, 4, 0)
+        self.filmstrip_label = QLabel("BATCH RESULTS")
+        self.filmstrip_label.setObjectName("hintLabel")
+        header.addWidget(self.filmstrip_label)
+        header.addStretch(1)
+        close_btn = QToolButton()
+        close_btn.setIcon(icon("x", 14))
+        close_btn.setAutoRaise(True)
+        close_btn.setToolTip("Hide batch filmstrip")
+        close_btn.clicked.connect(lambda: self.filmstrip.setVisible(False))
+        header.addWidget(close_btn)
+        wrap_layout.addLayout(header)
+
+        self.filmstrip_list = QListWidget()
+        self.filmstrip_list.setObjectName("filmstrip")
+        self.filmstrip_list.setViewMode(QListView.ViewMode.IconMode)
+        self.filmstrip_list.setFlow(QListView.Flow.LeftToRight)
+        self.filmstrip_list.setWrapping(False)
+        self.filmstrip_list.setMovement(QListView.Movement.Static)
+        self.filmstrip_list.setResizeMode(QListView.ResizeMode.Adjust)
+        self.filmstrip_list.setIconSize(QSize(78, 78))
+        self.filmstrip_list.setGridSize(QSize(108, 122))
+        self.filmstrip_list.setSpacing(6)
+        self.filmstrip_list.setFixedHeight(146)
+        self.filmstrip_list.setHorizontalScrollMode(
+            QListView.ScrollMode.ScrollPerPixel
+        )
+        self.filmstrip_list.setVerticalScrollBarPolicy(
+            Qt.ScrollBarPolicy.ScrollBarAlwaysOff
+        )
+        self.filmstrip_list.itemClicked.connect(self._on_filmstrip_click)
+        wrap_layout.addWidget(self.filmstrip_list)
+        return wrap
+
+    def _on_batch_result(
+        self,
+        image_path: Path,
+        masks_npz: Path,
+        metrics: list[dict],
+        elapsed: float,
+        engine_name: str,
+    ) -> None:
+        """Add one entry to the filmstrip as each batch image finishes."""
+        from PySide6.QtGui import QPixmap
+        from PySide6.QtWidgets import QListWidgetItem
+
+        pix = QPixmap(str(image_path))
+        if pix.isNull():
+            return
+        # Square thumbnail with the centre cropped.
+        side = min(pix.width(), pix.height())
+        cx = (pix.width() - side) // 2
+        cy = (pix.height() - side) // 2
+        thumb = pix.copy(cx, cy, side, side).scaled(
+            78, 78,
+            Qt.AspectRatioMode.KeepAspectRatio,
+            Qt.TransformationMode.SmoothTransformation,
+        )
+
+        item = QListWidgetItem(QIcon(thumb), f"{image_path.name}\n{len(metrics)} col.")
+        item.setToolTip(
+            f"{image_path.name}\n"
+            f"{len(metrics)} colonies · {elapsed:.2f}s · {engine_name}"
+        )
+        item.setData(Qt.ItemDataRole.UserRole, {
+            "image_path": image_path,
+            "masks_npz":  masks_npz,
+            "metrics":    metrics,
+            "elapsed":    elapsed,
+            "engine":     engine_name,
+        })
+        self.filmstrip_list.addItem(item)
+        self.filmstrip.setVisible(True)
+
+    def _on_filmstrip_click(self, item) -> None:
+        """Load the clicked batch result back into the canvas + sidebar."""
+        data = item.data(Qt.ItemDataRole.UserRole)
+        if not isinstance(data, dict):
+            return
+        img_path: Path = data["image_path"]
+        masks_npz: Path = data["masks_npz"]
+        metrics: list[dict] = data["metrics"]
+        elapsed: float = data["elapsed"]
+        engine: str = data["engine"]
+
+        # 1) reload the source image into the canvas
+        try:
+            self.load_image(img_path)
+        except Exception as e:  # noqa: BLE001
+            toast(self, f"Couldn't reopen {img_path.name}: {e}", level="error")
+            return
+
+        # 2) apply the saved masks
+        try:
+            with np.load(masks_npz) as data_np:
+                masks = data_np["masks"]
+            self.canvas.set_masks(masks)
+        except Exception as e:  # noqa: BLE001
+            toast(self, f"Masks unavailable for {img_path.name}: {e}",
+                  level="error", duration_ms=5000)
+            return
+
+        # 3) replay summary + table + enable exports
+        self.current_metrics = metrics
+        self.last_elapsed = elapsed
+        self.last_engine_name = engine
+        unit = "um^2" if self._scale_value() else "px"
+        self.summary_label.setText(
+            f"<b>{len(metrics)}</b> colonies · "
+            f"<b>{elapsed:.2f}s</b><br>"
+            f"<span style='color:#8a93a4'>engine: {engine} | unit: {unit}</span>"
+        )
+        self._populate_table(metrics)
+        self._enable_exports(bool(metrics))
 
     # ----------------------------- chrome handlers --------------------------
 
@@ -819,6 +964,10 @@ class MainWindow(QMainWindow):
         self.progress.setVisible(True)
         self.status_label.setText("Batch: scanning...")
 
+        # reset filmstrip — fresh batch, fresh thumbnails
+        self.filmstrip_list.clear()
+        self.filmstrip.setVisible(False)
+
         worker = BatchWorker(
             Path(in_dir),
             Path(out_dir),
@@ -826,6 +975,7 @@ class MainWindow(QMainWindow):
             scale_um_per_px=self._scale_value(),
         )
         worker.signals.progress.connect(self.on_batch_progress)
+        worker.signals.result_ready.connect(self._on_batch_result)
         worker.signals.finished.connect(self.on_batch_done)
         worker.signals.error.connect(self.on_error)
         self.threadpool.start(worker)
