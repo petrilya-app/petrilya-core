@@ -34,6 +34,45 @@ html {
   scroll-padding-top: 76px;
   scroll-behavior: smooth;
 }
+
+/* ============================================================
+ * Subtle themed scrollbars.
+ * The default Windows / Chrome scrollbar is a wide grey block
+ * that clashes with the dark navy palette. We replace it with a
+ * thin translucent thumb on a transparent track so it blends
+ * into the page and never steals attention.
+ *   - scrollbar-width: thin             (Firefox)
+ *   - scrollbar-color: thumb track       (Firefox)
+ *   - ::-webkit-scrollbar / -thumb       (Chrome / Edge / Safari)
+ * ============================================================ */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.14) transparent;
+}
+html.light * {
+  scrollbar-color: rgba(0, 0, 0, 0.18) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.14);
+  border: 2px solid transparent;
+  border-radius: 10px;
+  background-clip: content-box;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.32);
+  background-clip: content-box;
+}
+::-webkit-scrollbar-corner { background: transparent; }
+html.light ::-webkit-scrollbar-thumb {
+  background: rgba(0, 0, 0, 0.18);
+  background-clip: content-box;
+}
+html.light ::-webkit-scrollbar-thumb:hover {
+  background: rgba(0, 0, 0, 0.36);
+  background-clip: content-box;
+}
 html.light {
   color-scheme: light;
   --bg: #f6f4ec;
