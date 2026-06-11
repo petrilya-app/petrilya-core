@@ -2137,17 +2137,35 @@ html.light .theme-toggle .theme-icon-moon {
   .nav { padding-block: 12px; padding-inline: 18px; }
   .nav.is-scrolled { padding-block: 9px; }
   .hero-grid { padding: 0 18px; margin-top: 16px; }
-  .hero { padding-bottom: 60px; }
+  .hero { padding-bottom: 40px; }
 
   .hero-text h1 {
     font-size: clamp(30px, 8.4vw, 48px);
     letter-spacing: -0.8px;
     line-height: 1.08;
-    margin-bottom: 20px;
+    margin-bottom: 18px;
   }
-  .lead { margin-bottom: 24px; }
+  .lead { margin-bottom: 22px; font-size: 15.5px; }
   .section-lead { margin-bottom: 36px; }
-  .hero-art > img, .hero-art .dish-stage { max-width: 320px; }
+  .hero-grid { gap: 18px; }
+  .hero-text { margin-bottom: -6px; }
+
+  /* Dish — tighter on phones. With aspect-ratio 1:1 a full-bleed dish
+     dominates the fold; clamp to 280 so the hero stays scannable. */
+  .hero-art > img, .hero-art .dish-stage { max-width: 280px; }
+
+  /* Decorative bits that read on desktop but visually break on phones */
+  .hero-art::before, .hero-art::after { display: none; }
+  .scale-ticks .tick.t-left,
+  .scale-ticks .tick.t-right { display: none; }
+  .scale-ticks .tick.t-top,
+  .scale-ticks .tick.t-bottom { font-size: 8px; }
+  .hero-art-caption {
+    padding: 7px 16px;
+    bottom: -18px;
+    font-size: 11px;
+  }
+  .hero-art-caption .count { font-size: 16px; }
 
   /* CTA: stack and stretch full-width — works on every phone */
   .cta-row { flex-direction: column; align-items: stretch; gap: 10px; }
@@ -2204,7 +2222,16 @@ html.light .theme-toggle .theme-icon-moon {
     font-size: clamp(24px, 7vw, 34px);
     letter-spacing: -0.4px;
   }
-  .hero-art > img, .hero-art .dish-stage { max-width: 100%; }
+  /* Very narrow screens — keep the dish from eating the fold */
+  .hero-art > img, .hero-art .dish-stage { max-width: 240px; }
+  .hero-art-caption {
+    padding: 6px 14px;
+    bottom: -16px;
+    font-size: 10.5px;
+  }
+  .hero-art-caption .count { font-size: 15px; }
+  /* hide scale ticks entirely on tiny phones — they crowd the dish */
+  .scale-ticks { display: none; }
 
   /* nav: logo + theme + lang only — keep them on one row, no wrap */
   .nav { flex-wrap: nowrap; gap: 8px; }

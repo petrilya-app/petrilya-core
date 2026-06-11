@@ -1,0 +1,54 @@
+{
+  "schema_version": 1,
+  "petrilya_version": "0.0.1",
+  "timestamp_utc": "2026-06-08T06:39:11.273999+00:00",
+  "platform": {
+    "system": "Windows",
+    "release": "11",
+    "python": "3.12.7"
+  },
+  "input": {
+    "path": "C:\\Users\\mikpc\\Desktop\\petrilya-core\\4826.jpg",
+    "filename": "4826.jpg",
+    "sha256": "f0baac8bb8b515b2bac5ef4652b438c78072265ec8944ef854abc410c4ee76ea",
+    "size_bytes": 2177524
+  },
+  "engine": {
+    "name": "cellpose",
+    "params": {
+      "engine": "cellpose",
+      "model": "cyto3",
+      "params": {
+        "use_gpu": true,
+        "shape_filter": true,
+        "diameter_hint": 164.60000000000002,
+        "shape_filter_thresholds": {
+          "max_eccentricity": 0.85,
+          "min_solidity": 0.8,
+          "min_area_px": 150,
+          "max_area_frac": 0.2,
+          "max_saturation": 0.45,
+          "min_luma": 55
+        }
+      },
+      "filter_stats": {
+        "before": 7,
+        "dropped_eccentricity": 5,
+        "dropped_solidity": 0,
+        "dropped_area": 0,
+        "dropped_saturation": 0,
+        "dropped_luma": 0,
+        "kept": 2
+      }
+    }
+  },
+  "result": {
+    "n_objects": 2,
+    "masks_shape": [
+      4000,
+      3463
+    ],
+    "elapsed_seconds": 6.2491,
+    "scale_um_per_px": null
+  }
+}

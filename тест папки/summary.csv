@@ -1,0 +1,4 @@
+image,n_colonies,elapsed_seconds,engine
+11764.jpg,3,20.727,cellpose
+4826.jpg,2,6.249,cellpose
+5207.jpg,13,9.123,cellpose
